@@ -33,9 +33,10 @@ from src.store.events import append_event
 _BASE = "https://api.elevenlabs.io"
 _TTS_URL_TMPL = f"{_BASE}/v1/text-to-speech/{{voice_id}}"
 
-# Default voice — George, freely available on all plans.
-# Override by setting ELEVENLABS_VOICE_ID env var if desired.
-_DEFAULT_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")
+# Default voice — "jam", the project's custom cloned voice. Override via
+# ELEVENLABS_VOICE_ID env var (e.g. to the public George voice
+# JBFqnCBsd6RMkjVDRZzb for deployments that don't have the custom voice).
+_DEFAULT_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "pihaaotj6DtshjIKnSVl")
 _DEFAULT_MODEL_ID = os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5")
 _OUTPUT_FORMAT = "mp3_44100_128"
 
