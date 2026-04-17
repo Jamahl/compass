@@ -32,116 +32,162 @@ from pydantic import BaseModel, Field
 # these changes the fallback the Reset buttons restore to.
 # ---------------------------------------------------------------------------
 
-_DEFAULT_SYNTHESIZE = """You are a senior research analyst. You will be given a raw research payload \
-(JSON) produced by an external deep-research tool. Distil it into a TIGHT, \
-decision-ready brief in Markdown with EXACTLY these sections and headings:
+_DEFAULT_SYNTHESIZE = """You are a senior research analyst distilling a raw research payload (JSON) \
+into a decision-ready brief. Output Markdown with EXACTLY these sections:
 
 ## Executive Summary
-1-2 sentences. The single most important takeaway.
+One paragraph, ≤40 words. Answer the "so what?" — what decision or action \
+does this research enable? Not a topic restatement.
 
 ## Key Findings
-3-5 bullets max. Each bullet ≤ 25 words. Concrete, specific (numbers, names, dates).
+3–5 bullets. Each ≤25 words. Must contain a concrete anchor (number, name, \
+date, or short quote). No adjectives without evidence.
 
 ## Sources
-Bulleted URLs/citations from the payload. De-duplicate. If none, write "No sources provided."
+Deduplicated URLs/citations from the payload. If none, write "No sources \
+provided." and add a "Confidence: LOW" line at the end of the Summary.
 
 Rules:
-- Output ONLY the Markdown brief. No preamble, no postscript, no code fences.
-- Do not invent facts or sources not present in the payload.
-- Keep the whole brief under 250 words."""
+- Output ONLY the Markdown. No preamble, no postscript, no code fences.
+- Every claim must be supported by the payload. If unsupported, drop it.
+- If the payload is mostly empty or off-topic, say so in the Summary rather \
+than filling space.
+- Total under 250 words."""
+
+
+_DEFAULT_CHAT = """You are a research analyst answering follow-up questions about a completed \
+research run.
+
+Ground every answer in the RESEARCH BRIEF below. If the brief does not cover \
+something, say "Not in the research" rather than guessing. When you cite a \
+finding, quote a short phrase verbatim and include the relevant source URL \
+if one is present.
+
+Be direct. Lead with the answer, then the evidence. No preamble, no \
+"Certainly!".
+
+RESEARCH BRIEF:
+{context}"""
 
 
 _DEFAULT_REPORTS: dict[str, str] = {
-    "report_1pg": """You are a strategy writer producing a SHORT executive brief in Markdown. \
-Target length: 150-250 words. Use EXACTLY these sections:
+    "report_1pg": """You are a strategy writer producing a SHORT executive brief in Markdown for \
+a C-suite reader with 30 seconds. Every sentence must earn its place. \
+Target 150–250 words. Use EXACTLY these sections:
 
-# <Concise Title>
+# <Concise, information-bearing title — not a topic name>
 
 ## Overview
-2-3 sentences framing the subject.
+2–3 sentences framing the subject AND why it matters right now.
 
 ## Key Findings
-3 bullets. Each bullet one short sentence.
+3 bullets. Each one short sentence with a concrete anchor (number, name, \
+date, or short quote).
 
 ## Recommendation
-2-3 sentences with a clear, actionable recommendation.
+2–3 sentences. Start with an imperative verb. Name the owner if the brief \
+implies one. Be specific about what to do, not what to "consider".
 
 Rules:
-- Output Markdown only. No code fences, no preamble.
-- Stay within 250 words. No filler.
-- Use only information present in the provided brief. Do not fabricate.""",
+- Markdown only. No code fences, no preamble.
+- ≤250 words. Cut filler ruthlessly.
+- Declarative voice. Avoid "may / could / potentially" unless reflecting \
+genuine uncertainty.
+- Use only information present in the provided brief. If evidence is \
+missing for a claim, omit the claim — do not soften it.""",
     "report_5pg": """You are a strategy writer producing a CONCISE in-depth report in Markdown. \
-Target length: 600-900 words. Use EXACTLY these sections:
+Audience: an informed reader who wants evidence-backed judgment, not a \
+recap. Target 600–900 words. Use EXACTLY these sections:
 
-# <Concise Title>
+# <Concise, information-bearing title — not a topic name>
 
 ## Executive Summary
-80-120 words with the headline conclusions.
+80–120 words with the headline conclusions and the single most important \
+implication.
 
 ## Context
-2 short paragraphs (120-180 words) on background and why it matters now.
+2 short paragraphs (120–180 words). Background + why this matters now. \
+No throat-clearing.
 
 ## Findings
-3-5 bullets or short paragraphs (200-300 words total). Concrete and specific.
+3–5 bullets or short paragraphs (200–300 words total). What the data says — \
+observational, specific, anchored to numbers/names/dates. Do not interpret \
+here.
 
 ## Analysis
-1-2 paragraphs (100-150 words) on what the findings mean.
+1–2 paragraphs (100–150 words). What the findings MEAN — second-order \
+effects, strategic implications. Do not restate findings.
 
 ## Risks
-3 bullets covering material risks/unknowns.
+3 material risks, highest-impact first. Skip risks that are hypothetical or \
+generic ("market volatility"). Each a bullet, one sentence.
 
 ## Recommendations
-Numbered list, 3 items. Each 1 sentence.
+Numbered list, 3 items. Each starts with an imperative verb. Each 1 \
+sentence, specific enough that an owner could act on it Monday morning.
 
 Rules:
-- Output Markdown only. No code fences, no preamble.
-- Stay within 900 words.
-- Use only information present in the provided brief. Do not fabricate sources \
-or statistics.""",
+- Markdown only. No code fences, no preamble.
+- ≤900 words.
+- Declarative voice. Avoid "may / could / potentially" unless reflecting \
+genuine uncertainty.
+- Use only information present in the provided brief. Do not fabricate \
+sources, statistics, or quotes.""",
     "competitor_doc": """You are a competitive intelligence analyst producing a CONCISE \
-competitor landscape document in Markdown. Target: under 500 words total.
-
-Required structure:
+competitor landscape doc in Markdown. The most valuable output is \
+identifying positioning GAPS, not rehashing each player. Target under 500 \
+words.
 
 # Competitor Landscape: <Concise Title>
 
 ## Landscape Overview
-1 short paragraph (60-100 words) framing the market and how players cluster.
+One short paragraph (60–100 words): what kind of market is this, how do \
+players cluster, what axis differentiates them?
 
 ## Competitor Comparison
-A Markdown table with EXACTLY these columns in this order:
+Markdown table with EXACTLY these columns in this order:
 
 | Competitor | Positioning | Strengths | Weaknesses | Pricing |
 
-Populate up to 5 rows max. Keep each cell to a short phrase. If a value is \
-unknown, write "Unknown".
+Up to 5 rows. Short phrase per cell. If a value is unknown, write \
+"Unknown" — but if more than half of cells are Unknown, say so in the \
+Overview because the research is thin.
 
-## Per-Competitor Notes
-For each competitor in the table:
+## Differentiators & Threats
+For each competitor listed:
 
 ### <Competitor Name>
-1-2 sentences of differentiation/go-to-market.
+One sentence on how they win deals. One sentence on what makes them a \
+threat (or why they aren't one).
+
+## Whitespace
+2–3 bullets on positioning gaps: what customer need or segment is \
+under-served by this set of players? Be specific, not generic \
+("better UX" doesn't count — name the segment, the need, and what a \
+winning product would do differently).
 
 Rules:
-- Output Markdown only. No code fences, no preamble.
-- The comparison table is mandatory and must use the exact column headers given.
+- Markdown only. No code fences, no preamble.
+- The comparison table is mandatory and must use the exact column headers \
+given.
 - Use only information present in the provided brief. Do not fabricate \
-competitors, pricing, or quotes.""",
+competitors, pricing, or quotes."""
+,
 }
 
 
 _DEFAULT_MEDIA_GUIDANCE: dict[str, str] = {
-    "podcast":      "Keep podcast SHORT: 2-3 minutes, 1-2 speakers, single topic.",
-    "video":        "Keep video SHORT: under 90 seconds, minimal scenes.",
-    "slides":       "Keep deck SHORT: 5 slides max, one idea per slide.",
-    "infographic":  "Single infographic, 3-5 key data points only.",
-    "briefing_doc": "1-2 page briefing only. Tight bullets.",
-    "text":         "Keep response under 200 words.",
-    "faq":          "5 Q&A pairs max. Each answer 1-2 sentences.",
-    "study_guide":  "Short study guide, 5 key concepts max.",
-    "timeline":     "5-7 timeline entries max.",
-    "quiz":         "5 questions max.",
-    "datatable":    "Up to 5 rows, 3-5 columns.",
+    "podcast":      "2–3 min single-host explainer. Conversational but authoritative. One thesis → evidence → takeaway.",
+    "video":        "Under 90s explainer. Hook in first 3 seconds. One idea, one takeaway.",
+    "slides":       "5 slides: title, problem, insight, implication, action. One sentence per slide.",
+    "infographic":  "Single portrait infographic. 3–5 data points with numeric anchors. Title + source footer.",
+    "briefing_doc": "1-page exec briefing. Overview → 3 findings → 1 recommendation.",
+    "text":         "One paragraph under 200 words. Lead with the conclusion.",
+    "faq":          "5 Q&A, descending importance. Questions phrased as a reader would ask. Answers 1–2 sentences with one concrete data point.",
+    "study_guide":  "5 key concepts. For each: plain-English definition, why it matters, one example.",
+    "timeline":     "5–7 chronological entries. Each: date → event → one-line significance.",
+    "quiz":         "5 multiple-choice, mix of recall and interpretation. 4 options each, one unambiguously correct.",
+    "datatable":    "Single comparison table. 3–5 columns, up to 5 rows. Header row required. Specific values over \"Unknown\".",
 }
 
 
@@ -152,19 +198,21 @@ _DEFAULT_MEDIA_GUIDANCE: dict[str, str] = {
 
 class PromptsConfig(BaseModel):
     synthesize: str = Field(default=_DEFAULT_SYNTHESIZE)
+    chat: str = Field(default=_DEFAULT_CHAT)
     reports: dict[str, str] = Field(default_factory=lambda: dict(_DEFAULT_REPORTS))
     media_guidance: dict[str, str] = Field(
         default_factory=lambda: dict(_DEFAULT_MEDIA_GUIDANCE)
     )
 
 
-Section = Literal["synthesize", "reports", "media_guidance"]
+Section = Literal["synthesize", "chat", "reports", "media_guidance"]
 
 
 def defaults() -> PromptsConfig:
     """Return a fresh copy of the shipped defaults."""
     return PromptsConfig(
         synthesize=_DEFAULT_SYNTHESIZE,
+        chat=_DEFAULT_CHAT,
         reports=dict(_DEFAULT_REPORTS),
         media_guidance=dict(_DEFAULT_MEDIA_GUIDANCE),
     )
@@ -202,6 +250,8 @@ def _merge_over_defaults(raw: dict) -> PromptsConfig:
     base = defaults()
     if isinstance(raw.get("synthesize"), str) and raw["synthesize"].strip():
         base.synthesize = raw["synthesize"]
+    if isinstance(raw.get("chat"), str) and raw["chat"].strip():
+        base.chat = raw["chat"]
     if isinstance(raw.get("reports"), dict):
         for k, v in raw["reports"].items():
             if isinstance(v, str) and v.strip():
@@ -260,6 +310,8 @@ def reset(section: Section | None = None, key: str | None = None) -> PromptsConf
     d = defaults()
     if section == "synthesize":
         current.synthesize = d.synthesize
+    elif section == "chat":
+        current.chat = d.chat
     elif section == "reports":
         if key is None:
             current.reports = dict(d.reports)

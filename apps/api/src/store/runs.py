@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS runs (
     request_json     TEXT NOT NULL,
     stages_json      TEXT NOT NULL DEFAULT '[]',
     artifacts_json   TEXT NOT NULL DEFAULT '[]',
-    research_payload TEXT
+    research_payload TEXT,
+    brief            TEXT
 );
 """
 
@@ -56,7 +57,7 @@ _INDEX_SQL = (
 _LOCK = threading.Lock()
 
 # Fields on RunState that callers are allowed to mutate via update_run().
-_UPDATABLE_FIELDS: frozenset[str] = frozenset({"status", "research_payload"})
+_UPDATABLE_FIELDS: frozenset[str] = frozenset({"status", "research_payload", "brief"})
 
 
 def _conn() -> sqlite3.Connection:
@@ -67,11 +68,24 @@ def _conn() -> sqlite3.Connection:
 
 
 def _init_db() -> None:
-    """Create the data directory, table, and index if they don't exist."""
+    """Create the data directory, table, and index if they don't exist.
+
+    Also runs lightweight, idempotent migrations for columns added after the
+    initial schema. Uses PRAGMA table_info to detect missing columns instead
+    of catching exceptions.
+    """
     _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _conn() as conn:
         conn.executescript(_SCHEMA_SQL)
         conn.execute(_INDEX_SQL)
+        # Migration: add `brief` column for runs created before the settings
+        # page + chat-uses-brief change. Safe to run every boot — no-op once
+        # the column exists.
+        existing_cols = {
+            row["name"] for row in conn.execute("PRAGMA table_info(runs)")
+        }
+        if "brief" not in existing_cols:
+            conn.execute("ALTER TABLE runs ADD COLUMN brief TEXT")
         conn.commit()
 
 
@@ -139,6 +153,10 @@ def _row_to_state(row: sqlite3.Row) -> RunState:
     request_data = json.loads(row["request_json"]) if row["request_json"] else None
     stages_data = json.loads(row["stages_json"] or "[]")
     artifacts_data = json.loads(row["artifacts_json"] or "[]")
+    # `brief` column may be absent on very fresh/partially-migrated rows —
+    # sqlite3.Row raises IndexError on unknown keys, not KeyError, so probe
+    # via keys() instead of .get().
+    brief = row["brief"] if "brief" in row.keys() else None
     return RunState.model_validate(
         {
             "run_id": row["run_id"],
@@ -147,6 +165,7 @@ def _row_to_state(row: sqlite3.Row) -> RunState:
             "stages": stages_data,
             "artifacts": artifacts_data,
             "research_payload": row["research_payload"],
+            "brief": brief,
             "request": request_data,
         }
     )
@@ -170,6 +189,7 @@ def create_run(run_id: str, request: RunRequest) -> RunState:
         stages=[],
         artifacts=[],
         research_payload=None,
+        brief=None,
         request=request,
     )
     request_json = json.dumps(request.model_dump(mode="json"))
@@ -207,8 +227,9 @@ def update_run(run_id: str, **kwargs: Any) -> RunState | None:
             if key in _UPDATABLE_FIELDS and hasattr(state, key):
                 setattr(state, key, value)
         conn.execute(
-            "UPDATE runs SET status = ?, research_payload = ? WHERE run_id = ?",
-            (state.status, state.research_payload, run_id),
+            "UPDATE runs SET status = ?, research_payload = ?, brief = ? "
+            "WHERE run_id = ?",
+            (state.status, state.research_payload, state.brief, run_id),
         )
         conn.commit()
     return state

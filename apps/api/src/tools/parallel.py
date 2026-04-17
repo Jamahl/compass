@@ -42,18 +42,56 @@ def _headers() -> dict[str, str]:
     }
 
 
+# Per-template guidance injected into the Parallel task input. Keeping these
+# concrete (vs. the bare slug) gives the deep-research agent a clear frame
+# for what "good" looks like for each template.
+_TEMPLATE_HINTS: dict[str, str] = {
+    "market_sizing":
+        "Focus on TAM / SAM / SOM with numeric anchors, growth rate, key "
+        "segments, and recent market data (≤24 months). Cite source + year "
+        "for every number.",
+    "competitor_scan":
+        "Focus on direct competitors: positioning, target ICP, pricing if "
+        "public, recent product moves (last 12 months), and differentiation. "
+        "Name specific companies, not categories.",
+    "customer_pain":
+        "Focus on specific customer problems: frequency, severity, current "
+        "workarounds, and willingness-to-pay signals. Prefer direct quotes "
+        "or survey data over assertions.",
+    "company_deep_dive":
+        "Focus on founding story, traction metrics, funding history, team "
+        "background, product evolution, and recent news. Include numbers "
+        "(revenue, users, headcount) wherever public.",
+    "product_teardown":
+        "Focus on product architecture, UX choices, core workflows, "
+        "differentiators, gaps, and user-reported friction. Reference "
+        "specific features by name.",
+}
+
+_QUALITY_FOOTER = (
+    "Prefer primary sources (company blogs, SEC filings, founder posts, "
+    "earnings calls) over aggregators. Return comprehensive findings — "
+    "downstream tools handle summarisation."
+)
+
+
 def _build_input(prompt: str, urls: list[str], template: str) -> str:
-    """Merge urls + template hint into the task input string.
+    """Merge urls + template hint + quality footer into the task input string.
 
     Parallel's basic output_schema doesn't accept a separate sources/template
     field; we fold them into the prompt text so the agent sees them.
     """
     parts = [prompt.strip()]
     if template and template != "custom":
-        parts.append(f"\nResearch template: {template.replace('_', ' ')}.")
+        hint = _TEMPLATE_HINTS.get(template)
+        if hint:
+            parts.append(f"\nResearch template — {template.replace('_', ' ')}:\n{hint}")
+        else:
+            parts.append(f"\nResearch template: {template.replace('_', ' ')}.")
     if urls:
         url_list = "\n".join(f"- {u}" for u in urls if u.strip())
         parts.append(f"\nPrioritise these sources when relevant:\n{url_list}")
+    parts.append(f"\n{_QUALITY_FOOTER}")
     return "\n".join(parts)
 
 

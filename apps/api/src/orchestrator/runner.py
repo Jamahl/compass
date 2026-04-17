@@ -146,6 +146,7 @@ async def start(run_id: str, request: RunRequest) -> None:
         )
         try:
             brief = await llm.synthesize(payload, run_id=run_id)
+            runs_store.update_run(run_id, brief=brief)
             runs_store.update_stage(run_id, "synthesize", "done")
             append_event(
                 run_id, "runner", "stage.done",
