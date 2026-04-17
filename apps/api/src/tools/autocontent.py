@@ -77,13 +77,17 @@ def _headers() -> dict[str, str]:
 async def _create(
     client: httpx.AsyncClient, ac_type: str, brief: str, title: str
 ) -> str:
-    body = {
+    body: dict[str, object] = {
         "resources": [{"type": "text", "content": brief}],
         "outputType": ac_type,
         "text": title,
         # `includeCitations: true` is a Pro-only feature; omit it so amateur
         # keys don't 400 with "Citations are only available to PRO subscribers".
     }
+    # Podcasts ("audio") default to ~15–17 min on this API; cap at the
+    # shortest preset so demo runs complete in ~3–5 min.
+    if ac_type == "audio":
+        body["duration"] = "short"
     r = await client.post(_CREATE_URL, headers=_headers(), json=body)
     if r.status_code >= 400:
         body_text = r.text[:500]

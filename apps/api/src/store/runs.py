@@ -75,7 +75,62 @@ def _init_db() -> None:
         conn.commit()
 
 
+def _sweep_zombies() -> int:
+    """Mark in-flight runs as failed on startup.
+
+    A run is considered zombie if its status is ``pending`` or
+    ``research_done`` — these imply an orchestrator task was mid-execution
+    when the previous process exited. Their running/pending stages and
+    artifacts are flipped to ``error`` with a clear reason, and the run
+    itself is set to ``failed``. Completed and already-failed runs are
+    untouched.
+
+    Returns the number of runs swept. Called once on module import.
+    """
+    reason = "Interrupted by server restart"
+    swept = 0
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT run_id, stages_json, artifacts_json
+            FROM runs
+            WHERE status IN ('pending', 'research_done')
+            """
+        ).fetchall()
+        for row in rows:
+            stages = json.loads(row["stages_json"] or "[]")
+            artifacts = json.loads(row["artifacts_json"] or "[]")
+            for s in stages:
+                if s.get("status") in ("pending", "running"):
+                    s["status"] = "error"
+                    if not s.get("error"):
+                        s["error"] = reason
+            for a in artifacts:
+                if a.get("status") in ("pending", "running"):
+                    a["status"] = "error"
+                    if not a.get("error"):
+                        a["error"] = reason
+            conn.execute(
+                "UPDATE runs SET status=?, stages_json=?, artifacts_json=? "
+                "WHERE run_id=?",
+                (
+                    "failed",
+                    json.dumps(stages),
+                    json.dumps(artifacts),
+                    row["run_id"],
+                ),
+            )
+            swept += 1
+        conn.commit()
+    if swept:
+        # Use print so uvicorn captures it at INFO level without needing a
+        # configured logger — keeps the dependency surface minimal.
+        print(f"[store.runs] swept {swept} zombie run(s) on startup")
+    return swept
+
+
 _init_db()
+_sweep_zombies()
 
 
 # ---- (De)serialisation helpers --------------------------------------------
