@@ -41,6 +41,9 @@ OutputType = Literal[
     "quiz",
     "datatable",
     "text",
+    # ElevenLabs (independent pipeline)
+    "elevenlabs_audio",
+    "elevenlabs_video",
 ]
 
 Status = Literal["pending", "running", "done", "error"]

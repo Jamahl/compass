@@ -37,6 +37,9 @@ if ROOT_ENV is not None:
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PARALLEL_API_KEY = os.getenv("PARALLEL_API_KEY")
 AUTOCONTENT_API_KEY = os.getenv("AUTOCONTENT_API_KEY")
+# Optional — ElevenLabs TTS + video (title-card + narration) outputs.
+# Jobs using these types fail gracefully if the key is missing.
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
 
 def require_keys() -> None:

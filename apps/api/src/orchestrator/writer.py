@@ -3,7 +3,10 @@
 Dispatches on `output_type`:
   * Report types (`report_1pg`, `report_5pg`, `competitor_doc`) → LLM writes
     markdown, then `reportgen.generate_report_pdf` renders it to PDF.
-  * Media types (`podcast`, `slides`, `video`) → AutoContent job.
+  * ElevenLabs types (`elevenlabs_audio`, `elevenlabs_video`) → independent
+    TTS pipeline in `tools.elevenlabs` (does not touch AutoContent).
+  * Everything else (podcast / slides / video / infographic / briefing_doc /
+    faq / study_guide / timeline / quiz / datatable / text) → AutoContent job.
 
 Always returns an ArtifactMeta — errors are captured as status="error".
 """
@@ -15,10 +18,12 @@ import asyncio
 from ..models import ArtifactMeta
 from ..store import runs as runs_store
 from ..store.events import append_event
-from ..tools import autocontent, llm, reportgen
+from ..tools import autocontent, elevenlabs, llm, reportgen
 from ..tools.autocontent import AutoContentProRequiredError
+from ..tools.elevenlabs import ElevenLabsKeyMissingError
 
 _REPORT_TYPES = {"report_1pg", "report_5pg", "competitor_doc"}
+_ELEVENLABS_TYPES = {"elevenlabs_audio", "elevenlabs_video"}
 
 _REPORT_TITLES: dict[str, str] = {
     "report_1pg": "One-Page Research Brief",
@@ -68,8 +73,13 @@ async def generate_output(
                 content_md,
                 title,
             )
+        elif output_type in _ELEVENLABS_TYPES:
+            # Independent pipeline — does not touch AutoContent / reportgen.
+            path = await elevenlabs.generate_elevenlabs(
+                run_id, artifact_id, output_type, brief
+            )
         else:
-            # podcast | slides | video
+            # podcast | slides | video | infographic | briefing_doc | text ...
             path = await autocontent.generate_autocontent(
                 run_id, artifact_id, output_type, brief
             )
@@ -87,6 +97,22 @@ async def generate_output(
             data={"output_type": output_type, "filename": path.name},
         )
         return done_meta
+    except ElevenLabsKeyMissingError as e:
+        err_meta = ArtifactMeta(
+            id=artifact_id,
+            type=output_type,  # type: ignore[arg-type]
+            status="error",
+            filename="",
+            error=str(e),
+        )
+        runs_store.upsert_artifact(run_id, err_meta)
+        append_event(
+            run_id, "writer", "artifact.skipped",
+            f"{output_type} skipped — ELEVENLABS_API_KEY not set",
+            level="warn",
+            data={"output_type": output_type},
+        )
+        return err_meta
     except AutoContentProRequiredError:
         err_meta = ArtifactMeta(
             id=artifact_id,

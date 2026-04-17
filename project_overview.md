@@ -25,7 +25,8 @@ Single-user localhost web app. User submits research prompt → backend runs Par
 | Transport | REST + **polling** (2s interval) | No SSE for MVP |
 | PDF | `fpdf2` (markdown → HTML → PDF) | Pure Python, no pango/cairo |
 | Persistence | SQLite (`apps/api/data/runs.db`) + file artifacts (`apps/api/data/artifacts/` or `ARTIFACTS_BASE` env) | Survives restarts |
-| External | OpenAI (`gpt-5.4-nano`), Parallel Task API, AutoContent API | All 3 keys live |
+| External | OpenAI (`gpt-5.4-nano`), Parallel Task API, AutoContent API, ElevenLabs TTS | 4 keys; ElevenLabs optional |
+| Video mux (EL) | `imageio-ffmpeg` (bundled binary) + Pillow title-card | No system ffmpeg/libjpeg needed |
 | Runtime | Localhost **or** Docker Compose | `docker compose up` runs api + web + named volume |
 
 ---
@@ -85,7 +86,9 @@ type OutputType =
   // AutoContent PDF
   | "briefing_doc"
   // AutoContent structured text (saved as .md)
-  | "faq" | "study_guide" | "timeline" | "quiz" | "datatable" | "text";
+  | "faq" | "study_guide" | "timeline" | "quiz" | "datatable" | "text"
+  // ElevenLabs (independent pipeline, runs parallel to AutoContent)
+  | "elevenlabs_audio" | "elevenlabs_video";
 type Status    = "pending" | "running" | "done" | "error";           // stages + artifacts
 type RunStatus = "pending" | "research_done" | "completed" | "failed";
 ```
@@ -101,6 +104,8 @@ type RunStatus = "pending" | "research_done" | "completed" | "failed";
 | video | AutoContent `video` | MP4 | `<video controls>` |
 | infographic | AutoContent `infographic` | PNG | `<img>` |
 | faq, study_guide, timeline, quiz, datatable, text | AutoContent (returns `response_text`) | MD | `react-markdown` + GFM |
+| elevenlabs_audio | ElevenLabs TTS `/v1/text-to-speech/{voice_id}` | MP3 | `<audio controls>` |
+| elevenlabs_video | ElevenLabs TTS + Pillow title-card + ffmpeg mux | MP4 | `<video controls>` |
 
 ### 4.2 Depth → Parallel processor tier
 
@@ -228,6 +233,7 @@ All `async`. All throw on non-recoverable error; runner catches and marks stage 
 | `tools/llm.py` | `write_report(brief: str, report_type: OutputType) -> str` | markdown report |
 | `tools/reportgen.py` | `generate_report_pdf(run_id, artifact_id, content_md, title) -> Path` | PDF path |
 | `tools/autocontent.py` | `generate_autocontent(run_id, artifact_id, output_type, brief) -> Path` | media file path |
+| `tools/elevenlabs.py` | `generate_elevenlabs(run_id, artifact_id, output_type, brief) -> Path` | MP3 / MP4 path |
 | `orchestrator/writer.py` | `generate_output(run_id, output_type, brief) -> ArtifactMeta` | final meta |
 | `store/events.py` | `append_event(run_id, source, type, message, *, data=None, level="info")` | `None` (never raises) |
 | `store/events.py` | `list_events(run_id, since=0, limit=1000) -> list[dict]` | events with `id > since`, ascending |
@@ -269,6 +275,9 @@ Root `.env` (gitignored):
 OPENAI_API_KEY=...
 PARALLEL_API_KEY=...
 AUTOCONTENT_API_KEY=...
+ELEVENLABS_API_KEY=...            # optional — enables elevenlabs_audio / _video outputs
+ELEVENLABS_VOICE_ID=...           # optional — defaults to JBFqnCBsd6RMkjVDRZzb (George)
+ELEVENLABS_MODEL_ID=...           # optional — defaults to eleven_turbo_v2_5
 ```
 
 Loaded by `apps/api/src/config.py` via `python-dotenv`. Config resolves `.env` at `Path(__file__).parents[2] / ".env"` (root). Raises `ValueError` on missing key.
@@ -348,6 +357,7 @@ Backend:  http://localhost:8000
 - **Tool-wrapper output sizes are tuned for fast demo runs.** Synthesize ≤250w; report_1pg ≤250w; report_5pg ≤900w; competitor_doc ≤500w / max 5 rows. AutoContent brief is capped at 2000 chars and per-output-type brevity guidance is appended to the `text` field (e.g. "podcast: 2-3 min", "video: <90s"). Audio jobs also get `duration: "short"`. Bump these only when an output looks too thin.
 - **Tool timeouts symmetric at 1800s.** Both `parallel.run_research` and `autocontent.generate_autocontent` use a 1800s overall `asyncio.wait_for`. Was 600s/900s before — bumped because deep tier + slide/video can legitimately exceed 10 min.
 - **Prompts are user-editable at runtime.** The synth prompt, three report writers, and 11 media-guidance strings live in `apps/api/src/store/prompts.py`. Defaults are the source of truth; overrides persist to a JSON file (path from `PROMPTS_PATH`, else `<repo>/Config/prompts.json` under apps/api). Reads are mtime-cached so runs pick up edits with no restart. `llm.synthesize`, `llm.write_report`, and `autocontent.generate_autocontent` all resolve their prompts from the store each call. Atomic writes via `tmp + os.replace`. Schema is forward-compat: missing keys fall back to defaults so adding a new output type later doesn't break old saved files.
+- **ElevenLabs is a fully independent pipeline.** `tools/elevenlabs.py` handles `elevenlabs_audio` (TTS → MP3) and `elevenlabs_video` (TTS + Pillow title-card + ffmpeg mux → MP4). Dispatched from `writer.generate_output` via `_ELEVENLABS_TYPES`; does not share state with AutoContent and runs concurrently in the same `asyncio.gather` fan-out. ffmpeg binary ships with `imageio-ffmpeg` (no apt-get needed). Brief narration capped at 2500 chars with markdown stripped before TTS. Missing key raises `ElevenLabsKeyMissingError` → artifact errors gracefully with a "not set" message; other outputs in the run are unaffected. Video intermediates use `{artifact_id}__narration.mp3` / `{artifact_id}__card.png` names so the artifact route's `{id}.*` resolver never mis-serves them. Overall timeout: 600s.
 
 ---
 
