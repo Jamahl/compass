@@ -149,6 +149,7 @@ Base: `http://localhost:8000` (Vite dev proxies `/api/*` → `:8000`).
 | POST | `/runs` | create + start run | `{"run_id": str}` |
 | GET | `/runs` | list recent runs (newest first, summary) | `RunSummary[]` |
 | GET | `/runs/{run_id}` | poll run state | `RunState` |
+| GET | `/runs/{run_id}/events?since=N&limit=M` | incremental live-thinking event stream | `RunEvent[]` (id-ascending, `id > since`) |
 | POST | `/runs/{run_id}/chat` | chat vs research | `ChatResponse` |
 | GET | `/contexts` | list .md files in `Context/` with name + preview | `ContextFile[]` |
 | GET | `/artifacts/{artifact_id}` | preview / stream artifact | `FileResponse` (inline by default) |
@@ -156,7 +157,7 @@ Base: `http://localhost:8000` (Vite dev proxies `/api/*` → `:8000`).
 
 **Inline vs download:** default Content-Disposition is `inline` so the browser can embed the file (PDF in iframe, media in native players, PNG in img). Pass `?download=1` to force `attachment` for the Save-As flow.
 
-**No SSE.** Frontend polls `GET /runs/{id}` every 2s until `status ∈ {completed, failed}`.
+**No SSE.** Frontend polls `GET /runs/{id}` every 2s until `status ∈ {completed, failed}`. The `LiveThinking` component additionally polls `/runs/{id}/events?since=<lastSeenId>` every 1s while running (5s when terminal, stops after 2 empty drains) — pass the highest id seen so far as `since` for incremental fetch.
 
 ---
 
@@ -190,6 +191,18 @@ runner.start:
 On any exception → stage.error set, status = failed.
 ```
 
+**Event log (parallel side-channel).** Every meaningful step in `runner`,
+`writer`, `parallel`, `llm`, `autocontent` calls
+`store.events.append_event(run_id, source, type, message, data=..., level=...)`.
+Events go to a **separate** SQLite DB (`apps/api/data/events.db`) so verbose
+narration never bloats `runs.db`. The append helper swallows all exceptions —
+**telemetry must never break a run**. Sources: `runner | writer | parallel | llm | autocontent`.
+Common types: `run.start | run.done | run.fatal | stage.start | stage.done |
+stage.error | context.loaded | context.empty | context.none | tool.call |
+tool.created | tool.status | tool.result | tool.error | tool.skipped |
+tool.timeout | tool.download | report.render | writer.fanout |
+artifact.start | artifact.done | artifact.error | artifact.skipped`.
+
 ---
 
 ## 7. Tool contracts (backend-internal)
@@ -204,6 +217,22 @@ All `async`. All throw on non-recoverable error; runner catches and marks stage 
 | `tools/reportgen.py` | `generate_report_pdf(run_id, artifact_id, content_md, title) -> Path` | PDF path |
 | `tools/autocontent.py` | `generate_autocontent(run_id, artifact_id, output_type, brief) -> Path` | media file path |
 | `orchestrator/writer.py` | `generate_output(run_id, output_type, brief) -> ArtifactMeta` | final meta |
+| `store/events.py` | `append_event(run_id, source, type, message, *, data=None, level="info")` | `None` (never raises) |
+| `store/events.py` | `list_events(run_id, since=0, limit=1000) -> list[dict]` | events with `id > since`, ascending |
+
+**Writer contract caveat:** `writer.generate_output` **never raises** — it
+catches every exception internally and returns `ArtifactMeta(status="error",
+error=...)`. Don't `try/except` around it expecting failures; check
+`result.status == "error"` instead. The runner's `isinstance(result, Exception)`
+branch only fires for unexpected `asyncio.gather` failures.
+
+**Tool wrappers take optional `run_id`** for event emission:
+- `parallel.run_research(..., *, run_id=None)`
+- `llm.synthesize(payload, *, run_id=None)`
+- `llm.write_report(brief, type, *, run_id=None)`
+- `autocontent.generate_autocontent(run_id, ...)` (always takes `run_id`)
+
+When omitted, the wrapper still works but emits no events.
 
 ---
 
@@ -211,6 +240,7 @@ All `async`. All throw on non-recoverable error; runner catches and marks stage 
 
 - **Data fetching:** `fetch` + `useState`/`useEffect`. No react-query.
 - **Polling:** `src/api/polling.ts` — `pollRun(runId, onUpdate, 2000)` returns cleanup fn. Stops on terminal status.
+- **Live thinking:** `LiveThinking.tsx` polls `listEvents(runId, since)` from `src/api/client.ts`. Cursor (`sinceRef`) is reset **inside** the polling effect, guarded by `lastRunIdRef`, so the reset cannot race with the first tick when `runId` changes. Don't move the reset to a separate `useEffect` — both effects fire after commit and the polling tick will fire with the stale cursor.
 - **Persistence:** IndexedDB via Dexie. Single table `messages` (`++id, runId, role, content, ts`). Run history NOT persisted — backend owns.
 - **State:** zustand store holds `currentRunId` + latest `runState`.
 - **Metadata:** `src/lib/formats.ts` = single source for OUTPUT_FORMATS (6), TEMPLATES (6 incl. custom), DEPTH_LEVELS (4).
@@ -261,6 +291,23 @@ docker compose up --build
 - Named volume `api_data` holds SQLite + artifacts (persists across rebuilds).
 - `./Context` mounted read-only into the api container so host edits surface instantly.
 
+> ⚠️ **Source is baked into the image — there is NO bind-mount for `apps/api/src` or `apps/web/src`.**
+> Code changes do **not** hot-reload in Docker. After ANY backend or frontend
+> change, rebuild + recreate:
+>
+> ```bash
+> docker compose up -d --build api web
+> ```
+>
+> **Symptom you'll see if you forget:** new routes return `{"detail":"Not Found"}`
+> (route doesn't exist) instead of the expected validation error. New frontend
+> components simply don't appear. Always verify with a route-existence probe
+> (e.g. `curl /runs/nope/events` should return `"run not found"`, not `"Not Found"`).
+>
+> Port 8000 / 5173 collisions also tell on this: if you have Docker running and
+> separately try `npm run dev`, uvicorn silently fails to bind 8000 and the
+> browser keeps hitting the **stale** Docker container.
+
 Frontend: http://localhost:5173
 Backend:  http://localhost:8000
 
@@ -277,6 +324,9 @@ Backend:  http://localhost:8000
 - **Pkg mgr: npm** (not pnpm). **Py env: venv+pip** (not uv).
 - **Context folder** — any `.md` at `<repo>/Context/*.md` shows as a tickable tile in InputPanel; selected files are prepended to the research prompt as "INTERNAL CONTEXT". README.md is skipped.
 - **Pro-only outputs** — runtime detection: backend catches AutoContent error messages containing "pro/subscription/upgrade/plan" tokens and raises `AutoContentProRequiredError` → artifact shows "Coming soon — requires AutoContent Pro plan" in amber. Static gating: `OutputFormat.pro = true` disables the tile in OutputSelector and shows a "Coming soon" pill.
+- **Live thinking events in a separate DB** — `events.db` is intentionally split from `runs.db`. Verbose narration would bloat the run state model; `RunState` stays small and JSON-serialisable for polling, while events are append-only and queried by id-cursor. `append_event` swallows all exceptions so logging cannot break a run.
+- **Tool-wrapper output sizes are tuned for fast demo runs.** Synthesize ≤250w; report_1pg ≤250w; report_5pg ≤900w; competitor_doc ≤500w / max 5 rows. AutoContent brief is capped at 2000 chars and per-output-type brevity guidance is appended to the `text` field (e.g. "podcast: 2-3 min", "video: <90s"). Audio jobs also get `duration: "short"`. Bump these only when an output looks too thin.
+- **Tool timeouts symmetric at 1800s.** Both `parallel.run_research` and `autocontent.generate_autocontent` use a 1800s overall `asyncio.wait_for`. Was 600s/900s before — bumped because deep tier + slide/video can legitimately exceed 10 min.
 
 ---
 
@@ -308,7 +358,8 @@ Backend:  http://localhost:8000
 - **Session persistence** — SQLite `runs.db` under `apps/api/data/`. New `GET /runs` list route. **Sidebar** (`RunSidebar.tsx`) shows all past runs with status dot, relative time, output icons; click to switch run; "+ New Research" button.
 - **3-column layout** — sidebar | input or current-run summary | dashboard+chat.
 - **Pro-only outputs** — graceful error detection (`AutoContentProRequiredError`) + amber "Coming soon — requires AutoContent Pro plan" in card; static `pro: true` flag on OutputFormat disables tile with "Coming soon" pill.
-- **Docker Compose** — `Dockerfile` per service, `docker-compose.yml` with `api_data` volume + read-only Context mount. Web container proxies via `VITE_API_URL=http://api:8000`.
+- **Docker Compose** — `Dockerfile` per service, `docker-compose.yml` with `api_data` volume + read-only Context mount. Web container proxies via `VITE_API_URL=http://api:8000`. **Source is baked, not bind-mounted — see Section 10 Option B for the rebuild rule.**
+- **Live thinking event log** — `apps/api/src/store/events.py` (separate `events.db`), `GET /runs/{id}/events?since=N`, `LiveThinking.tsx` poll component on the dashboard. Surfaces tool calls, status transitions, OpenAI token usage, AutoContent poll status, errors, timing — color-coded by source, expandable JSON `data`, pause toggle, auto-scroll with manual override. Confirmed live: context files reach Parallel as INTERNAL CONTEXT block (event `runner/context.loaded` shows `prompt_chars` and file names).
 
 ### Known deviations from tasks.md
 
