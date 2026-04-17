@@ -200,8 +200,17 @@ narration never bloats `runs.db`. The append helper swallows all exceptions —
 Common types: `run.start | run.done | run.fatal | stage.start | stage.done |
 stage.error | context.loaded | context.empty | context.none | tool.call |
 tool.created | tool.status | tool.result | tool.error | tool.skipped |
-tool.timeout | tool.download | report.render | writer.fanout |
-artifact.start | artifact.done | artifact.error | artifact.skipped`.
+tool.timeout | tool.download | tool.stale_queue | report.render |
+writer.fanout | artifact.start | artifact.done | artifact.error |
+artifact.skipped`.
+
+**Stale-queue detector (AutoContent).** `tool.stale_queue` is emitted at
+warn level when an AutoContent job sits at `status=0` (queued) for 3
+minutes, and a second time at 10 minutes. Each threshold fires at most
+once per job. AutoContent's shared queue sometimes holds a request for
+10+ minutes before picking it up; the warning tells the user the delay
+is upstream, not ours. The detector does not abort or retry — the 1800s
+hard timeout in `autocontent._run` still governs.
 
 ---
 
@@ -370,7 +379,8 @@ Backend:  http://localhost:8000
 - **Parallel API (verified 2026-04-17):** header is `x-api-key` (not Bearer). POST `/v1/tasks/runs`, body `{input, processor, task_spec: {output_schema: {type: "text"}}}`. Poll `/v1/tasks/runs/{run_id}` then fetch `/v1/tasks/runs/{run_id}/result`. `urls` + `template` are folded into the prompt text since the basic output_schema doesn't expose them as separate fields.
 - **AutoContent API (verified 2026-04-17):** header is `Authorization: Bearer`. POST `/content/Create`, body `{resources: [{type:"text", content}], outputType, text: title}`. Poll `/content/Status/{id}` — `status` is numeric: 0=queued, 10..80=in-progress, 100=done, <0=error. Completion fields: `audio_url`, `video_url`, `image_url`, `briefing_doc_url`, `response_text`, `document_content` depending on outputType.
 - **14 output types (not 6 in tasks.md).** Text-based AutoContent outputs saved as `.md`; previewed via react-markdown+GFM.
-- **Artifact preview:** every type has a modal viewer — PDFs via `<iframe>`, media via native `<audio>`/`<video>`, images via `<img>`, markdown via `react-markdown`. Download button in both the card and the modal (uses `?download=1`).
+- **Artifact preview:** every type has a modal viewer sized to `90vw × 90vh` — PDFs via `<iframe>`, media via native `<audio>`/`<video>`, images via `<img>`, markdown via `react-markdown` + GFM. `DialogContent` uses `flex flex-col` so the body's `flex-1` fills the remaining height beneath the header. Download button in both the card and the modal (uses `?download=1` to force attachment).
+- **Slider defensive handling.** base-ui's Slider emits `onValueChange` with either a `number` or `number[]` depending on internal state. `InputPanel` normalises (`Array.isArray ? v[0] : v`), rounds, clamps to `[0, DEPTH_LEVELS.length-1]`, and falls back to `DEPTH_LEVELS[0]` when re-rendering, so a stray NaN/out-of-range value from a track click can never null out `currentDepth` and white-screen the page.
 
 ### Running
 
