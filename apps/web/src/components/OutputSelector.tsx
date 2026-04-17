@@ -26,23 +26,19 @@ export function OutputSelector({ selected, onChange }: OutputSelectorProps) {
   const selectedCount = selected.size
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-xs font-extrabold uppercase tracking-widest text-primary mb-1">Output Blueprints</p>
-          <h2 className="text-xl font-bold text-on-surface">Choose your delivery formats.</h2>
-        </div>
-        <span className="text-xs font-semibold text-on-surface-variant">{selectedCount} selected</span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-xs font-semibold text-on-surface-variant">Outputs</span>
+        <span className="text-xs font-semibold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">{selectedCount} selected</span>
       </div>
-      {GROUP_ORDER.map((group) => {
-        const items = OUTPUT_FORMATS.filter((f) => f.group === group)
-        if (items.length === 0) return null
-        return (
-          <div key={group}>
-            <div className="text-xs font-extrabold uppercase tracking-widest text-on-surface-variant mb-3">
-              {group}
-            </div>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+
+      <div className="flex flex-col gap-4">
+        {GROUP_ORDER.map((group) => {
+          const items = OUTPUT_FORMATS.filter((f) => f.group === group)
+          if (items.length === 0) return null
+          return (
+            <div key={group} className="flex flex-col gap-1.5">
+              <div className="text-[10px] font-semibold text-on-surface-variant/60 mb-0.5">{group}</div>
               {items.map((format) => {
                 const Icon = format.icon
                 const isPro = format.pro === true
@@ -55,44 +51,27 @@ export function OutputSelector({ selected, onChange }: OutputSelectorProps) {
                     disabled={isPro}
                     onClick={() => toggle(format.id)}
                     className={cn(
+                      'relative flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-all w-full',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       isPro
-                        ? 'group relative flex flex-col items-start gap-2 rounded-xl border border-transparent bg-surface-container-lowest p-4 text-left opacity-50 cursor-not-allowed'
+                        ? 'opacity-40 cursor-not-allowed bg-surface-container-lowest'
                         : isSelected
-                          ? 'group relative flex flex-col items-start gap-2 rounded-xl border border-primary/30 bg-accent/40 p-4 text-left transition-all duration-200 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-                          : 'group relative flex flex-col items-start gap-2 rounded-xl border border-transparent bg-surface-container-lowest p-4 text-left transition-all duration-200 hover:border-primary/10 hover:shadow-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                          ? 'bg-accent border border-primary/30 shadow-sm'
+                          : 'bg-surface-container-lowest border border-transparent hover:border-primary/10 hover:shadow-sm'
                     )}
                   >
                     {isPro && (
-                      <span className="absolute top-2 right-2 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                        Coming soon
-                      </span>
+                      <span className="absolute top-1 right-1 text-[8px] font-semibold px-1.5 py-0.5 rounded-full bg-black/5 text-on-surface-variant">Pro</span>
                     )}
-                    <div className={cn(
-                      "w-9 h-9 rounded-lg flex items-center justify-center mb-1",
-                      group === 'Reports' ? 'bg-primary-fixed' : group === 'Media' ? 'bg-secondary-fixed-dim' : 'bg-tertiary-fixed'
-                    )}>
-                      <Icon
-                        className={cn(
-                          'size-4 shrink-0',
-                          isSelected
-                            ? 'text-primary'
-                            : 'text-on-surface-variant',
-                        )}
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-on-surface leading-tight">
-                      {format.label}
-                    </span>
-                    <p className="text-[11px] leading-snug text-on-surface-variant">
-                      {format.description}
-                    </p>
+                    <Icon className={cn('size-3.5 shrink-0', isSelected ? 'text-primary' : 'text-on-surface-variant')} />
+                    <span className={cn('text-xs font-semibold leading-tight', isSelected ? 'text-primary' : 'text-on-surface')}>{format.label}</span>
                   </button>
                 )
               })}
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

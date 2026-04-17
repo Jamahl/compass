@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
+import compassLogo from '@/assets/compass.png'
 import { cn } from '@/lib/utils'
 import { listRuns, type RunSummary, type RunStatus } from '@/api/client'
 import { OUTPUT_FORMAT_BY_ID } from '@/lib/formats'
@@ -81,13 +82,16 @@ export function RunSidebar({ currentRunId, onSelect }: RunSidebarProps) {
   }, [])
 
   return (
-    <aside className="flex h-screen w-[260px] shrink-0 flex-col bg-surface-container-low">
+    <aside className="flex h-screen w-[260px] shrink-0 flex-col bg-white/60 backdrop-blur-xl border-r border-white/40">
       <div className="px-4 py-5 space-y-3">
-        <div className="text-base font-extrabold tracking-tight text-on-surface">Research Studio</div>
+        <div className="flex items-center gap-2">
+          <img src={compassLogo} alt="Compass" className="w-7 h-7 object-contain" />
+          <span className="text-base font-extrabold tracking-tight text-on-surface">Compass</span>
+        </div>
         <button
           type="button"
           onClick={() => onSelect(null)}
-          className="w-full bg-gradient-brand text-white rounded-full px-4 py-2 text-sm font-bold shadow-glow-primary hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+          className="w-full bg-gradient-to-r from-[#003fb5] to-[#2563eb] text-white rounded-full px-4 py-2 text-sm font-bold shadow-lg shadow-blue-500/20 hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5"
         >
           <Plus className="size-3.5" />
           New Research

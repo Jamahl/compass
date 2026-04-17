@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import GradientBackground from '@/components/GradientBackground'
 import InputPanel from '@/components/InputPanel'
 import OutputSelector from '@/components/OutputSelector'
 import RunDashboard from '@/components/RunDashboard'
@@ -50,78 +51,60 @@ function App() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
+      <GradientBackground />
       <RunSidebar
         currentRunId={currentRunId}
         onSelect={handleSelectRun}
       />
 
-      <main className="flex min-h-screen flex-1 gap-8 px-6 py-6">
-        {/* MIDDLE column */}
-        <div className="flex-1 space-y-6">
-          {!currentRunId ? (
-            <>
-              <OutputSelector
-                selected={selectedOutputs}
-                onChange={setSelectedOutputs}
-              />
+      <main className="flex min-h-screen flex-1 gap-8 px-8 py-8 overflow-hidden">
+        {!currentRunId ? (
+          <div className="flex h-full w-full gap-8 items-start">
+            {/* Left: search + options */}
+            <div className="flex-1 min-w-0">
               <InputPanel
                 selectedOutputs={Array.from(selectedOutputs)}
                 onSubmit={handleSubmit}
                 disabled={submitting}
               />
-            </>
-          ) : (
-            <Card className="bg-surface-container-lowest">
-              <CardHeader>
-                <CardTitle>Current Run</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Run ID:</span>{' '}
-                  <code className="text-xs">{currentRunId}</code>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Status:</span>{' '}
-                  {runState?.status ?? 'loading…'}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Outputs:</span>{' '}
-                  {runState?.artifacts.map((a) => a.type).join(', ') || '—'}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* RIGHT column */}
-        <div className="flex-1 space-y-6 lg:w-[420px] lg:max-w-[420px] lg:flex-none">
-          {currentRunId ? (
-            <>
+            </div>
+            {/* Right: output blueprints */}
+            <div className="w-[340px] shrink-0">
+              <OutputSelector
+                selected={selectedOutputs}
+                onChange={setSelectedOutputs}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-full w-full gap-8 items-start">
+            <div className="flex-1 min-w-0">
+              <Card className="bg-surface-container-lowest">
+                <CardHeader>
+                  <CardTitle>Current Run</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Run ID:</span>{' '}
+                    <code className="text-xs">{currentRunId}</code>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Status:</span>{' '}
+                    {runState?.status ?? 'loading…'}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Outputs:</span>{' '}
+                    {runState?.artifacts.map((a) => a.type).join(', ') || '—'}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="w-[420px] shrink-0 space-y-6">
               <RunDashboard runId={currentRunId} />
               <ChatPanel runId={currentRunId} researchReady={researchReady} />
-            </>
-          ) : (
-            <Card className="bg-surface-container-lowest rounded-xl border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-primary mb-3">How it works</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-on-surface-variant leading-relaxed space-y-2">
-                <p>1. Pick one or more output formats on the left.</p>
-                <p>
-                  2. Enter a research prompt, optional URLs, a template, and
-                  depth.
-                </p>
-                <p>
-                  3. Click <b>Run Research</b>. Stages stream on the right.
-                </p>
-                <p>
-                  4. Download artifacts as they complete. Chat with the research
-                  context once research is done.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

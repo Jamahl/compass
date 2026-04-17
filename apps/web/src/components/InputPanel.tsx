@@ -86,28 +86,30 @@ export function InputPanel({
     <div className="space-y-6">
       <div className="space-y-2 mb-2">
         <h1 className="text-4xl font-extrabold tracking-tight text-on-surface leading-[1.1]">
-          What do you want to <span className="text-primary">research</span>?
+          What are we <span className="text-primary">researching</span> today?
         </h1>
-        <p className="text-sm text-on-surface-variant">Powered by parallel deep research + GPT-4o synthesis.</p>
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="group relative flex items-start gap-3 bg-surface-container-high rounded-2xl px-5 py-4 shadow-sm ring-1 ring-transparent transition-all duration-300 focus-within:bg-surface-container-lowest focus-within:shadow-xl focus-within:shadow-primary/5 focus-within:ring-primary/20">
-          <Textarea
-            id="research-prompt"
-            rows={4}
-            required
-            placeholder="Describe your research objective…"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={disabled}
-            className="bg-transparent border-none focus:ring-0 w-full text-base font-medium placeholder:text-on-surface-variant/50 text-on-surface resize-none min-h-[80px] focus-visible:ring-0 focus-visible:outline-none shadow-none p-0"
-          />
+        {/* Gradient border wrapper */}
+        <div className="p-[2px] rounded-2xl bg-gradient-to-br from-primary via-[#6c9fff] to-[#a5b4fc] overflow-hidden">
+          <div className="group relative flex items-start gap-3 bg-white rounded-[calc(1.35rem-2px)] px-5 py-5 transition-all duration-300 focus-within:shadow-xl focus-within:shadow-primary/10">
+            <Textarea
+              id="research-prompt"
+              rows={5}
+              required
+              placeholder="Describe your research objective…"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              disabled={disabled}
+              className="bg-transparent border-none focus:ring-0 w-full text-lg font-medium placeholder:text-on-surface-variant/40 text-on-surface resize-none focus-visible:ring-0 focus-visible:outline-none shadow-none p-0"
+            />
+          </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="research-urls" className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+        <label htmlFor="research-urls" className="text-xs font-semibold text-on-surface-variant">
           URLs <span className="font-normal normal-case">(optional, one per line)</span>
         </label>
         <Textarea
@@ -122,7 +124,7 @@ export function InputPanel({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Context Files</label>
+        <label className="text-xs font-semibold text-on-surface-variant">Context Files</label>
         {contexts.length === 0 ? (
           <p className="text-xs text-on-surface-variant italic">
             No files in Context/. Drop .md files there to enable.
@@ -138,9 +140,10 @@ export function InputPanel({
                   onClick={() => toggleContext(ctx.filename)}
                   disabled={disabled}
                   className={cn(
+                    'rounded-xl p-3 text-left transition-all',
                     isSelected
-                      ? 'rounded-xl border border-primary/40 bg-accent/40 p-3 text-left shadow-sm'
-                      : 'rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-3 text-left hover:border-primary/20 hover:shadow-md transition-all',
+                      ? 'border border-primary/20 bg-accent/30'
+                      : 'border border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40',
                   )}
                 >
                   <div className="text-sm font-semibold text-on-surface">{ctx.name}</div>
@@ -155,7 +158,7 @@ export function InputPanel({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Template</label>
+        <label className="text-xs font-semibold text-on-surface-variant">Template</label>
         <div className="flex flex-wrap gap-2">
           {TEMPLATES.map((t) => (
             <button
@@ -187,7 +190,7 @@ export function InputPanel({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Depth</label>
+        <label className="text-xs font-semibold text-on-surface-variant">Depth</label>
         <Slider
           min={0}
           max={3}
@@ -221,7 +224,7 @@ export function InputPanel({
           'w-full py-3 rounded-full font-bold text-sm transition-all',
           submitDisabled
             ? 'bg-surface-container-high text-on-surface-variant cursor-not-allowed opacity-60'
-            : 'bg-gradient-brand text-white shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.99]'
+            : 'bg-white/25 backdrop-blur-md border border-white/50 text-primary shadow-sm hover:bg-white/35 hover:scale-[1.02] active:scale-[0.98]'
         )}
       >
         Run Research →

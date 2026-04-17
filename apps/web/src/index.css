@@ -66,13 +66,13 @@
 }
 
 :root {
-    --background: #f8f9fa;
+    --background: #eaf0ff;
     --foreground: #191c1d;
     --card: #ffffff;
     --card-foreground: #191c1d;
     --popover: #ffffff;
     --popover-foreground: #191c1d;
-    --primary: #0050cb;
+    --primary: #003fb5;
     --primary-foreground: #ffffff;
     --secondary: #edeeef;
     --secondary-foreground: #191c1d;
@@ -83,43 +83,43 @@
     --destructive: #ba1a1a;
     --border: #c2c6d8;
     --input: #e7e8e9;
-    --ring: #0050cb;
+    --ring: #003fb5;
     --radius: 0.75rem;
 
-    --chart-1: #0050cb;
+    --chart-1: #003fb5;
     --chart-2: #425ca0;
     --chart-3: #0066ff;
     --chart-4: #b3c5ff;
     --chart-5: #dae1ff;
 
-    --sidebar: #f3f4f5;
+    --sidebar: #e4ecff;
     --sidebar-foreground: #191c1d;
-    --sidebar-primary: #0050cb;
+    --sidebar-primary: #003fb5;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #edeeef;
     --sidebar-accent-foreground: #191c1d;
-    --sidebar-border: #c2c6d8;
-    --sidebar-ring: #0050cb;
+    --sidebar-border: #b8c8f0;
+    --sidebar-ring: #003fb5;
 
     --surface: #f8f9fa;
     --surface-low: #f3f4f5;
-    --surface-container: #edeeef;
-    --surface-high: #e7e8e9;
-    --surface-highest: #e1e3e4;
+    --surface-container: #dce6ff;
+    --surface-high: #ccd8ff;
+    --surface-highest: #bccaff;
     --surface-container-lowest: #ffffff;
-    --surface-container-low: #f3f4f5;
-    --surface-container-high: #e7e8e9;
-    --surface-container-highest: #e1e3e4;
+    --surface-container-low: #e4ecff;
+    --surface-container-high: #ccd8ff;
+    --surface-container-highest: #bccaff;
     --on-surface: #191c1d;
     --on-surface-variant: #424656;
     --outline: #727687;
     --outline-variant: #c2c6d8;
     --inverse-primary: #b3c5ff;
 
-    --gradient-brand: linear-gradient(135deg, #0050cb 0%, #0066ff 100%);
-    --gradient-brand-h: linear-gradient(90deg, #0050cb 0%, #0066ff 100%);
-    --glow-primary: 0 8px 32px rgba(0, 80, 203, 0.12);
-    --glow-primary-md: 0 4px 20px rgba(0, 80, 203, 0.16);
+    --gradient-brand: linear-gradient(135deg, #003fb5 0%, #2563eb 60%, #60a5fa 100%);
+    --gradient-brand-h: linear-gradient(90deg, #003fb5 0%, #2563eb 60%, #60a5fa 100%);
+    --glow-primary: 0 8px 40px rgba(0, 63, 181, 0.08);
+    --glow-primary-md: 0 4px 24px rgba(0, 63, 181, 0.12);
 }
 
 @layer base {
@@ -127,7 +127,14 @@
         @apply border-border outline-ring/50;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply text-foreground;
+        background-color: #eaf0ff;
+        position: relative;
+        min-height: 100vh;
+    }
+    #root {
+        position: relative;
+        z-index: 1;
     }
     html {
         @apply font-sans;
@@ -156,4 +163,106 @@
     .font-label {
         font-family: var(--font-label);
     }
+}
+
+/* ── Aurora orbs ── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  will-change: transform;
+}
+
+/* Orb 1 — top-left, sweeps diagonally to bottom-right */
+.orb-1 {
+  width: 75vw;
+  height: 75vw;
+  background: radial-gradient(circle at center, rgba(0, 63, 181, 0.22) 0%, transparent 65%);
+  top: -20%;
+  left: -15%;
+  animation: wave1 22s ease-in-out infinite;
+}
+
+/* Orb 2 — top-right, sweeps down and left */
+.orb-2 {
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle at center, rgba(37, 99, 235, 0.18) 0%, transparent 65%);
+  top: -15%;
+  right: -20%;
+  animation: wave2 17s ease-in-out infinite;
+}
+
+/* Orb 3 — centre, orbits in a slow circle */
+.orb-3 {
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.16) 0%, transparent 65%);
+  top: 25%;
+  left: 25%;
+  animation: wave3 26s ease-in-out infinite;
+}
+
+/* Orb 4 — bottom-right, travels up and across */
+.orb-4 {
+  width: 55vw;
+  height: 55vw;
+  background: radial-gradient(circle at center, rgba(96, 165, 250, 0.15) 0%, transparent 65%);
+  bottom: -20%;
+  right: -10%;
+  animation: wave4 20s ease-in-out infinite;
+}
+
+/* Orb 5 — bottom-left, sweeps to top-right */
+.orb-5 {
+  width: 45vw;
+  height: 45vw;
+  background: radial-gradient(circle at center, rgba(129, 140, 248, 0.14) 0%, transparent 65%);
+  bottom: -15%;
+  left: -10%;
+  animation: wave5 30s ease-in-out infinite;
+}
+
+/* Top-left → bottom-right diagonal sweep */
+@keyframes wave1 {
+  0%   { transform: translate(0%,    0%)    scale(1);    }
+  25%  { transform: translate(35%,   20%)   scale(1.10); }
+  50%  { transform: translate(55%,   55%)   scale(0.92); }
+  75%  { transform: translate(25%,   70%)   scale(1.06); }
+  100% { transform: translate(0%,    0%)    scale(1);    }
+}
+
+/* Top-right → bottom-left sweep */
+@keyframes wave2 {
+  0%   { transform: translate(0%,    0%)    scale(1);    }
+  33%  { transform: translate(-40%,  30%)   scale(1.12); }
+  66%  { transform: translate(-60%,  60%)   scale(0.90); }
+  100% { transform: translate(0%,    0%)    scale(1);    }
+}
+
+/* Centre — full circular orbit */
+@keyframes wave3 {
+  0%   { transform: translate(0%,    0%)    scale(1);    }
+  20%  { transform: translate(20%,  -25%)   scale(1.08); }
+  40%  { transform: translate(35%,   10%)   scale(0.95); }
+  60%  { transform: translate(10%,   30%)   scale(1.05); }
+  80%  { transform: translate(-20%,  15%)   scale(0.97); }
+  100% { transform: translate(0%,    0%)    scale(1);    }
+}
+
+/* Bottom-right → top-left travel */
+@keyframes wave4 {
+  0%   { transform: translate(0%,    0%)    scale(1);    }
+  30%  { transform: translate(-30%,  -35%)  scale(1.14); }
+  60%  { transform: translate(-55%,  -60%)  scale(0.88); }
+  100% { transform: translate(0%,    0%)    scale(1);    }
+}
+
+/* Bottom-left → top-right diagonal */
+@keyframes wave5 {
+  0%   { transform: translate(0%,    0%)    scale(1);    }
+  25%  { transform: translate(25%,  -20%)   scale(1.09); }
+  50%  { transform: translate(50%,  -50%)   scale(0.93); }
+  75%  { transform: translate(30%,  -65%)   scale(1.04); }
+  100% { transform: translate(0%,    0%)    scale(1);    }
 }
