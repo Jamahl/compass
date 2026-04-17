@@ -71,12 +71,11 @@ export default function ArtifactModal({
     <Dialog open onOpenChange={(open) => (!open ? onClose() : undefined)}>
       <DialogContent
         className={cn(
-          // Force a 50vw × 50vh viewport — overrides the Dialog primitive's
-          // default max-w-sm cap. min- prevents the dialog collapsing on
-          // very narrow viewports where 50vw < 360px.
-          // flex flex-col so the body's flex-1 fills the remaining height.
+          // 90vw × 90vh — nearly fullscreen. Override the Dialog primitive's
+          // default max-w-sm cap. flex flex-col so the body's flex-1 fills
+          // the remaining height beneath the header.
           'p-0 overflow-hidden gap-0 flex flex-col',
-          'w-[50vw] h-[50vh] max-w-[50vw] sm:max-w-[50vw] min-w-[360px] min-h-[360px]',
+          'w-[90vw] h-[90vh] max-w-[90vw] sm:max-w-[90vw]',
         )}
       >
         <DialogHeader className="px-5 py-3 border-b flex flex-row items-center justify-between space-y-0">
