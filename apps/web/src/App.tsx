@@ -88,7 +88,7 @@ function App() {
             </div>
           ) : (
             <div className="flex h-full w-full gap-8 items-start">
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 space-y-6">
                 <Card className="bg-surface-container-lowest">
                   <CardHeader>
                     <CardTitle>Current Run</CardTitle>
@@ -108,10 +108,10 @@ function App() {
                     </div>
                   </CardContent>
                 </Card>
+                <ChatPanel runId={currentRunId} researchReady={researchReady} />
               </div>
               <div className="w-[420px] shrink-0 space-y-6">
                 <RunDashboard runId={currentRunId} />
-                <ChatPanel runId={currentRunId} researchReady={researchReady} />
               </div>
             </div>
           )}

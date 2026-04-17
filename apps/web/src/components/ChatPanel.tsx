@@ -1,19 +1,41 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { Loader2, Send } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { CheckCircle2, Loader2, MessageSquare, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { postChat, type ChatMessage } from '@/api/client'
 import { db } from '@/db/dexie'
+import { useStore } from '@/state/store'
+import { Markdown } from '@/components/ui/markdown'
 
 interface ChatPanelProps {
   runId: string
   researchReady: boolean
 }
 
+const SUGGESTED_PROMPTS = [
+  'Summarise the key findings in 5 bullets.',
+  'What are the biggest risks or gaps in the research?',
+  'Give me 3 recommended next steps based on the outputs.',
+]
+
 export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+
+  const runState = useStore((s) => s.runState)
+
+  const artifactSummary = useMemo(() => {
+    const all = runState?.artifacts ?? []
+    const done = all.filter((a) => a.status === 'done')
+    const running = all.filter((a) => a.status === 'running' || a.status === 'pending')
+    return {
+      doneTypes: done.map((a) => a.type),
+      doneCount: done.length,
+      runningCount: running.length,
+      total: all.length,
+    }
+  }, [runState])
 
   useEffect(() => {
     let cancelled = false
@@ -101,16 +123,79 @@ export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
     }
   }
 
+  const handleSuggestion = (text: string) => {
+    if (!researchReady || sending) return
+    setInput(text)
+  }
+
   return (
-    <div className="relative flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden" style={{minHeight: '320px'}}>
+    <div className="relative flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden" style={{ minHeight: '320px' }}>
+      {/* Status badge header */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-outline-variant/20 bg-surface-container-low/50">
+        <MessageSquare className="h-3.5 w-3.5 text-on-surface-variant" />
+        <span className="text-xs font-semibold text-on-surface">Chat with research</span>
+        <span
+          className={cn(
+            'ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+            researchReady
+              ? 'bg-green-100 text-green-700'
+              : 'bg-surface-container-high text-on-surface-variant',
+          )}
+        >
+          {researchReady ? (
+            <>
+              <CheckCircle2 className="h-2.5 w-2.5" />
+              Research ready
+              {artifactSummary.total > 0 && (
+                <span className="opacity-75">· {artifactSummary.doneCount}/{artifactSummary.total} outputs</span>
+              )}
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              Waiting
+            </>
+          )}
+        </span>
+      </div>
+
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 min-h-[240px]"
       >
         <div className="flex flex-col gap-2">
           {messages.length === 0 && researchReady && (
-            <div className="text-center text-xs text-on-surface-variant">
-              Ask a question about the research.
+            <div className="flex flex-col gap-3 py-2">
+              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 text-xs">
+                <div className="mb-1 font-semibold text-on-surface">Chat context loaded</div>
+                <ul className="space-y-0.5 text-on-surface-variant">
+                  <li>• Parallel deep-research payload</li>
+                  {artifactSummary.doneCount > 0 && (
+                    <li>
+                      • {artifactSummary.doneCount} generated artifact{artifactSummary.doneCount === 1 ? '' : 's'}:{' '}
+                      <span className="text-on-surface">{artifactSummary.doneTypes.map((t) => t.replace(/_/g, ' ')).join(', ')}</span>
+                    </li>
+                  )}
+                  {artifactSummary.runningCount > 0 && (
+                    <li className="italic">
+                      • {artifactSummary.runningCount} artifact{artifactSummary.runningCount === 1 ? '' : 's'} still generating — will be folded in automatically
+                    </li>
+                  )}
+                </ul>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => handleSuggestion(p)}
+                    disabled={sending}
+                    className="rounded-full border border-outline-variant/30 bg-white/50 backdrop-blur-sm px-3 py-1 text-xs text-on-surface-variant hover:bg-white/80 hover:text-on-surface disabled:opacity-50 transition-all"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {messages.map((m, i) => (
@@ -125,10 +210,19 @@ export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
                 className={cn(
                   m.role === 'user'
                     ? 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm bg-gradient-brand text-white shadow-sm'
-                    : 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm bg-surface-container-high text-on-surface',
+                    : 'max-w-[80%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm bg-surface-container-high text-on-surface',
                 )}
               >
-                {m.content}
+                {m.role === 'assistant' ? (
+                  <Markdown
+                    id={`msg-${i}`}
+                    className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0"
+                  >
+                    {m.content}
+                  </Markdown>
+                ) : (
+                  m.content
+                )}
               </div>
             </div>
           ))}
