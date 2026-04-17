@@ -4,6 +4,7 @@ import OutputSelector from '@/components/OutputSelector'
 import RunDashboard from '@/components/RunDashboard'
 import ChatPanel from '@/components/ChatPanel'
 import RunSidebar from '@/components/RunSidebar'
+import SettingsPanel from '@/components/SettingsPanel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { postRun } from '@/api/client'
 import type { RunRequest } from '@/api/client'
@@ -17,6 +18,7 @@ function App() {
     new Set(['report_1pg']),
   )
   const [submitting, setSubmitting] = useState(false)
+  const [view, setView] = useState<'runs' | 'settings'>('runs')
 
   const handleSubmit = async (req: RunRequest) => {
     setSubmitting(true)
@@ -36,6 +38,7 @@ function App() {
   }
 
   const handleSelectRun = (runId: string | null) => {
+    setView('runs')
     if (runId === null) {
       reset()
       return
@@ -51,10 +54,17 @@ function App() {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <RunSidebar
-        currentRunId={currentRunId}
+        currentRunId={view === 'settings' ? null : currentRunId}
         onSelect={handleSelectRun}
+        settingsOpen={view === 'settings'}
+        onOpenSettings={() => setView('settings')}
       />
 
+      {view === 'settings' ? (
+        <main className="flex min-h-screen flex-1 flex-col overflow-y-auto p-6">
+          <SettingsPanel />
+        </main>
+      ) : (
       <main className="flex min-h-screen flex-1 gap-6 p-6">
         {/* MIDDLE column */}
         <div className="flex-1 space-y-6">
@@ -123,6 +133,7 @@ function App() {
           )}
         </div>
       </main>
+      )}
     </div>
   )
 }

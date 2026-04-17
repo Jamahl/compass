@@ -142,6 +142,54 @@ export async function postChat(
   return (await res.json()) as { reply: string }
 }
 
+// ---------------------------------------------------------------------------
+// Prompt settings (user-editable system prompts).
+// ---------------------------------------------------------------------------
+
+export interface PromptsConfig {
+  synthesize: string
+  reports: Record<string, string>
+  media_guidance: Record<string, string>
+}
+
+export interface PromptsEnvelope {
+  config: PromptsConfig
+  defaults: PromptsConfig
+}
+
+export type PromptSection = 'synthesize' | 'reports' | 'media_guidance'
+
+export async function getPrompts(): Promise<PromptsEnvelope> {
+  const res = await fetch('/api/prompts')
+  await ensureOk(res)
+  return (await res.json()) as PromptsEnvelope
+}
+
+export async function savePrompts(
+  cfg: PromptsConfig,
+): Promise<PromptsEnvelope> {
+  const res = await fetch('/api/prompts', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cfg),
+  })
+  await ensureOk(res)
+  return (await res.json()) as PromptsEnvelope
+}
+
+export async function resetPrompts(
+  section?: PromptSection,
+  key?: string,
+): Promise<PromptsEnvelope> {
+  const res = await fetch('/api/prompts/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ section: section ?? null, key: key ?? null }),
+  })
+  await ensureOk(res)
+  return (await res.json()) as PromptsEnvelope
+}
+
 export function downloadArtifact(artifactId: string): void {
   // ?download=1 tells the server to send Content-Disposition: attachment
   // so the browser always saves rather than rendering inline.

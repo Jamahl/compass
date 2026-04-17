@@ -57,10 +57,10 @@ Hackathon/
 │       └── src/
 │           ├── config.py
 │           ├── models.py
-│           ├── routes/   (runs, artifacts, chat)
+│           ├── routes/   (runs, artifacts, chat, contexts, prompts)
 │           ├── tools/    (parallel, llm, reportgen, autocontent)
 │           ├── orchestrator/ (runner, writer)
-│           └── store/    (runs dict, artifacts_dir)
+│           └── store/    (runs, events, artifacts_dir, contexts_dir, prompts)
 ```
 
 Artifacts saved to `/tmp/betterlabs-artifacts/{run_id}/{artifact_id}.{ext}`.
@@ -152,6 +152,9 @@ Base: `http://localhost:8000` (Vite dev proxies `/api/*` → `:8000`).
 | GET | `/runs/{run_id}/events?since=N&limit=M` | incremental live-thinking event stream | `RunEvent[]` (id-ascending, `id > since`) |
 | POST | `/runs/{run_id}/chat` | chat vs research | `ChatResponse` |
 | GET | `/contexts` | list .md files in `Context/` with name + preview | `ContextFile[]` |
+| GET | `/prompts` | fetch user-editable prompt config + shipped defaults | `{config: PromptsConfig, defaults: PromptsConfig}` |
+| PUT | `/prompts` | replace full prompt config (422 if `synthesize`/`reports.*` empty) | same envelope |
+| POST | `/prompts/reset` | reset everything, a section, or one key to defaults | same envelope |
 | GET | `/artifacts/{artifact_id}` | preview / stream artifact | `FileResponse` (inline by default) |
 | GET | `/artifacts/{artifact_id}?download=1` | force attachment download | `FileResponse` (attachment) |
 
@@ -228,6 +231,8 @@ All `async`. All throw on non-recoverable error; runner catches and marks stage 
 | `orchestrator/writer.py` | `generate_output(run_id, output_type, brief) -> ArtifactMeta` | final meta |
 | `store/events.py` | `append_event(run_id, source, type, message, *, data=None, level="info")` | `None` (never raises) |
 | `store/events.py` | `list_events(run_id, since=0, limit=1000) -> list[dict]` | events with `id > since`, ascending |
+| `store/prompts.py` | `get_prompts() -> PromptsConfig` | merged (defaults ∪ overrides), mtime-cached |
+| `store/prompts.py` | `save_prompts(cfg)` / `reset(section?, key?)` | atomic write via tmp + `os.replace` |
 
 **Writer contract caveat:** `writer.generate_output` **never raises** — it
 catches every exception internally and returns `ArtifactMeta(status="error",
@@ -267,6 +272,11 @@ AUTOCONTENT_API_KEY=...
 ```
 
 Loaded by `apps/api/src/config.py` via `python-dotenv`. Config resolves `.env` at `Path(__file__).parents[2] / ".env"` (root). Raises `ValueError` on missing key.
+
+**Optional overrides:**
+- `ARTIFACTS_BASE` — artifact root (default `apps/api/data/artifacts`).
+- `CONTEXT_BASE` — `Context/` dir (default `<repo>/Context`).
+- `PROMPTS_PATH` — user prompt overrides JSON (default `<apps/api>/Config/prompts.json`; Docker sets it to `/app/data/prompts.json` so edits survive rebuilds).
 
 ---
 
@@ -337,6 +347,7 @@ Backend:  http://localhost:8000
 - **Live thinking events in a separate DB** — `events.db` is intentionally split from `runs.db`. Verbose narration would bloat the run state model; `RunState` stays small and JSON-serialisable for polling, while events are append-only and queried by id-cursor. `append_event` swallows all exceptions so logging cannot break a run.
 - **Tool-wrapper output sizes are tuned for fast demo runs.** Synthesize ≤250w; report_1pg ≤250w; report_5pg ≤900w; competitor_doc ≤500w / max 5 rows. AutoContent brief is capped at 2000 chars and per-output-type brevity guidance is appended to the `text` field (e.g. "podcast: 2-3 min", "video: <90s"). Audio jobs also get `duration: "short"`. Bump these only when an output looks too thin.
 - **Tool timeouts symmetric at 1800s.** Both `parallel.run_research` and `autocontent.generate_autocontent` use a 1800s overall `asyncio.wait_for`. Was 600s/900s before — bumped because deep tier + slide/video can legitimately exceed 10 min.
+- **Prompts are user-editable at runtime.** The synth prompt, three report writers, and 11 media-guidance strings live in `apps/api/src/store/prompts.py`. Defaults are the source of truth; overrides persist to a JSON file (path from `PROMPTS_PATH`, else `<repo>/Config/prompts.json` under apps/api). Reads are mtime-cached so runs pick up edits with no restart. `llm.synthesize`, `llm.write_report`, and `autocontent.generate_autocontent` all resolve their prompts from the store each call. Atomic writes via `tmp + os.replace`. Schema is forward-compat: missing keys fall back to defaults so adding a new output type later doesn't break old saved files.
 
 ---
 
@@ -370,6 +381,7 @@ Backend:  http://localhost:8000
 - **Pro-only outputs** — graceful error detection (`AutoContentProRequiredError`) + amber "Coming soon — requires AutoContent Pro plan" in card; static `pro: true` flag on OutputFormat disables tile with "Coming soon" pill.
 - **Docker Compose** — `Dockerfile` per service, `docker-compose.yml` with `api_data` volume + read-only Context mount. Web container proxies via `VITE_API_URL=http://api:8000`. **Source is baked, not bind-mounted — see Section 10 Option B for the rebuild rule.**
 - **Live thinking event log** — `apps/api/src/store/events.py` (separate `events.db`), `GET /runs/{id}/events?since=N`, `LiveThinking.tsx` poll component on the dashboard. Surfaces tool calls, status transitions, OpenAI token usage, AutoContent poll status, errors, timing — color-coded by source, expandable JSON `data`, pause toggle, auto-scroll with manual override. Confirmed live: context files reach Parallel as INTERNAL CONTEXT block (event `runner/context.loaded` shows `prompt_chars` and file names).
+- **Prompt settings page** — gear in `RunSidebar` swaps the main panel for `SettingsPanel.tsx`: editable textareas for the brief-synth prompt, the three report writers (collapsible), and the 11 media-guidance strings (2-col grid). Per-field Reset + global Reset-everything + Discard + dirty indicator. Backend: `apps/api/src/store/prompts.py` holds defaults + mtime-cached JSON store with atomic writes; `apps/api/src/routes/prompts.py` exposes `GET/PUT /prompts` and `POST /prompts/reset`. Runs pick up edits with no restart. `llm.synthesize`, `llm.write_report`, `autocontent.generate_autocontent` all read from the store each call.
 
 ### Known deviations from tasks.md
 
