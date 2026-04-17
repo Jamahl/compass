@@ -83,6 +83,7 @@ class RunState(BaseModel):
     stages: list[Stage] = Field(default_factory=list)
     artifacts: list[ArtifactMeta] = Field(default_factory=list)
     research_payload: str | None = None
+    brief: str | None = None  # markdown brief produced by the synth stage
     created_at: str | None = None  # ISO 8601 UTC; set by the store on create
     request: RunRequest | None = None  # keep original for debug / writer access
 

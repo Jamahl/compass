@@ -24,13 +24,17 @@ class PromptsEnvelope(BaseModel):
 
 
 class ResetRequest(BaseModel):
-    section: Optional[Literal["synthesize", "reports", "media_guidance"]] = None
+    section: Optional[
+        Literal["synthesize", "chat", "reports", "media_guidance"]
+    ] = None
     key: Optional[str] = None
 
 
 def _validate(cfg: PromptsConfig) -> None:
     if not cfg.synthesize.strip():
         raise HTTPException(422, "synthesize prompt cannot be empty")
+    if not cfg.chat.strip():
+        raise HTTPException(422, "chat prompt cannot be empty")
     for k, v in cfg.reports.items():
         if not isinstance(v, str) or not v.strip():
             raise HTTPException(422, f"reports.{k} cannot be empty")

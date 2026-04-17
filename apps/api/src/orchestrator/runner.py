@@ -18,7 +18,6 @@ from uuid import uuid4
 
 from ..models import ArtifactMeta, RunRequest
 from ..store import runs as runs_store
-from ..store.artifacts_dir import artifacts_base
 from ..store.contexts_dir import get_contexts_base, load_context_files
 from ..store.events import append_event
 from ..tools import llm, parallel
@@ -147,20 +146,7 @@ async def start(run_id: str, request: RunRequest) -> None:
         )
         try:
             brief = await llm.synthesize(payload, run_id=run_id)
-            # Persist the synthesized brief as a sidecar markdown file so the
-            # chat route can include it in context (higher signal than the raw
-            # Parallel JSON payload). Best-effort; write failure must not break
-            # the downstream writer fan-out.
-            try:
-                brief_path = artifacts_base() / run_id / "brief.md"
-                brief_path.parent.mkdir(parents=True, exist_ok=True)
-                brief_path.write_text(brief, encoding="utf-8")
-            except OSError as brief_err:
-                append_event(
-                    run_id, "runner", "brief.sidecar_skip",
-                    f"brief.md sidecar skipped: {brief_err}",
-                    level="warn",
-                )
+            runs_store.update_run(run_id, brief=brief)
             runs_store.update_stage(run_id, "synthesize", "done")
             append_event(
                 run_id, "runner", "stage.done",

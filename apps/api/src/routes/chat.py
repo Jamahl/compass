@@ -1,9 +1,13 @@
 """Chat route — POST /runs/{run_id}/chat.
 
 Lets the user chat against the research context produced by the runner.
-Gated on `state.research_payload` being populated (set at end of research stage).
-Uses OpenAI via the async client (model pinned inline below). See
-project_overview.md sections 4, 5 and tasks.md T32, T33.
+Gated on research being complete (synth stage writes ``state.brief``; we fall
+back to the raw ``research_payload`` if the brief isn't stored for some reason
+— e.g. runs created before the `brief` column existed).
+
+System prompt is user-editable via ``/prompts`` (see store/prompts.py); the
+template must contain a ``{context}`` placeholder into which the brief (or
+legacy payload) plus any available artifact context is injected.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ from ..config import OPENAI_API_KEY
 from ..models import ChatRequest, ChatResponse
 from ..store import runs as runs_store
 from ..store.artifacts_dir import artifacts_base
+from ..store.prompts import get_prompts
 
 router = APIRouter()
 
@@ -34,9 +39,13 @@ _TEXT_ARTIFACT_TYPES: frozenset[str] = frozenset(
         "report_1pg", "report_5pg", "competitor_doc",
     }
 )
+
+# Caps — brief is markdown and tiny; legacy payload is big JSON and gets a
+# harder clamp so we don't blow the context window.
+_BRIEF_CAP = 8000
+_LEGACY_PAYLOAD_CAP = 15000
 _PER_ARTIFACT_CHAR_CAP = 4000
 _TOTAL_ARTIFACT_CHAR_CAP = 24000
-_BRIEF_CHAR_CAP = 8000
 
 
 def _get_client() -> AsyncOpenAI:
@@ -48,11 +57,11 @@ def _get_client() -> AsyncOpenAI:
 
 
 def _load_artifact_context(run_id: str, artifacts: list) -> str:
-    """Build a summary block of AutoContent artifacts for the system prompt.
+    """Build a summary + inlined-content block for a run's artifacts.
 
-    Lists every artifact by type + status and inlines the body of text-based
-    AutoContent outputs (saved as .md) so the chat model can answer against
-    generated content, not just the Parallel research payload.
+    Lists every artifact by type + status, then inlines the body of
+    text-based outputs (AutoContent text + report .md sidecars) so the chat
+    model can answer against generated content, not just the research brief.
     """
     if not artifacts:
         return ""
@@ -102,15 +111,34 @@ def _load_artifact_context(run_id: str, artifacts: list) -> str:
     return block
 
 
-def _load_brief(run_id: str) -> str:
-    """Read the synthesized brief sidecar if it exists, else empty string."""
-    path = artifacts_base() / run_id / "brief.md"
-    if not path.exists():
-        return ""
-    try:
-        return path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return ""
+def _build_system_content(
+    brief: str | None,
+    payload: str | None,
+    artifact_block: str,
+) -> str:
+    """Inject the best available context into the user-editable chat prompt.
+
+    Prefer the synthesized markdown brief (what the user actually wants Q&A
+    against); fall back to truncated raw payload for pre-migration runs. The
+    artifact block (summary + inlined sidecar content) is appended after the
+    brief so the assistant can reference generated outputs too. If the
+    template lacks a ``{context}`` placeholder, append the context after a
+    blank line so edits that accidentally strip the placeholder still work.
+    """
+    if brief:
+        context = brief[:_BRIEF_CAP]
+    elif payload:
+        context = payload[:_LEGACY_PAYLOAD_CAP]
+    else:
+        context = "(no research context available)"
+
+    if artifact_block:
+        context = f"{context}\n\n{artifact_block}"
+
+    template = get_prompts().chat
+    if "{context}" in template:
+        return template.replace("{context}", context)
+    return f"{template.rstrip()}\n\nRESEARCH BRIEF:\n{context}"
 
 
 @router.post("/runs/{run_id}/chat", response_model=ChatResponse)
@@ -120,27 +148,13 @@ async def chat(run_id: str, body: ChatRequest) -> ChatResponse:
     if state is None:
         raise HTTPException(status_code=404, detail="run not found")
 
-    if state.research_payload is None:
+    if state.research_payload is None and state.brief is None:
         raise HTTPException(status_code=400, detail="research not complete yet")
 
     artifact_block = _load_artifact_context(run_id, state.artifacts)
-    brief = _load_brief(run_id)
-
-    system_content = (
-        "You are a research assistant. Use the following research context and "
-        "generated artifacts to answer the user's questions. Cite specifics "
-        "when possible. Format responses in Markdown.\n\n"
-        "RESEARCH CONTEXT (from Parallel):\n\n"
-        f"{state.research_payload[:15000]}"
+    system_content = _build_system_content(
+        state.brief, state.research_payload, artifact_block
     )
-    if brief:
-        system_content += (
-            "\n\nSYNTHESIZED BRIEF (distilled summary used to generate all "
-            "outputs — the highest-signal source):\n\n"
-            f"{brief[:_BRIEF_CHAR_CAP]}"
-        )
-    if artifact_block:
-        system_content += "\n\n" + artifact_block
 
     messages: list[dict[str, str]] = [{"role": "system", "content": system_content}]
     messages.extend({"role": m.role, "content": m.content} for m in body.history)

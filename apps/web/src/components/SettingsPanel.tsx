@@ -138,6 +138,11 @@ export function SettingsPanel() {
     setDraft({ ...draft, synthesize: defaults.synthesize })
   }
 
+  const resetChat = () => {
+    setSavedAt(null)
+    setDraft({ ...draft, chat: defaults.chat })
+  }
+
   const resetReport = (key: string) => {
     setSavedAt(null)
     setDraft({
@@ -234,6 +239,49 @@ export function SettingsPanel() {
           />
           <div className="mt-1 text-right text-[10px] text-muted-foreground">
             {draft.synthesize.length.toLocaleString()} chars
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 1b. Chat */}
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle>Chat</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              System prompt for the post-research chat. Use{' '}
+              <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                {'{context}'}
+              </code>{' '}
+              to mark where the research brief is injected. If omitted, the
+              brief is appended at the end.
+            </p>
+          </div>
+          <ResetButton
+            onClick={resetChat}
+            disabled={draft.chat === defaults.chat}
+          />
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={draft.chat}
+            onChange={(e) => setDraft({ ...draft, chat: e.target.value })}
+            className="min-h-40 font-mono text-xs leading-relaxed"
+            spellCheck={false}
+          />
+          <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>
+              {draft.chat.includes('{context}') ? (
+                <span className="text-green-600">
+                  ✓ {'{context}'} placeholder present
+                </span>
+              ) : (
+                <span className="text-amber-600">
+                  No {'{context}'} placeholder — brief will be appended
+                </span>
+              )}
+            </span>
+            <span>{draft.chat.length.toLocaleString()} chars</span>
           </div>
         </CardContent>
       </Card>

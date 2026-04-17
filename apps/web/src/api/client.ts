@@ -148,6 +148,7 @@ export async function postChat(
 
 export interface PromptsConfig {
   synthesize: string
+  chat: string
   reports: Record<string, string>
   media_guidance: Record<string, string>
 }
@@ -157,7 +158,7 @@ export interface PromptsEnvelope {
   defaults: PromptsConfig
 }
 
-export type PromptSection = 'synthesize' | 'reports' | 'media_guidance'
+export type PromptSection = 'synthesize' | 'chat' | 'reports' | 'media_guidance'
 
 export async function getPrompts(): Promise<PromptsEnvelope> {
   const res = await fetch('/api/prompts')
