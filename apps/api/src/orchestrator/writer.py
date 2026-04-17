@@ -74,42 +74,48 @@ async def generate_output(
                 run_id, artifact_id, output_type, brief
             )
 
-        append_event(
-            run_id, "writer", "artifact.done",
-            f"Writer done: {output_type} → {path.name}",
-            data={"output_type": output_type, "filename": path.name},
-        )
-        return ArtifactMeta(
+        done_meta = ArtifactMeta(
             id=artifact_id,
             type=output_type,  # type: ignore[arg-type]
             status="done",
             filename=path.name,
         )
-    except AutoContentProRequiredError:
+        runs_store.upsert_artifact(run_id, done_meta)
         append_event(
-            run_id, "writer", "artifact.skipped",
-            f"{output_type} requires AutoContent Pro — skipped",
-            level="warn",
-            data={"output_type": output_type},
+            run_id, "writer", "artifact.done",
+            f"Writer done: {output_type} → {path.name}",
+            data={"output_type": output_type, "filename": path.name},
         )
-        return ArtifactMeta(
+        return done_meta
+    except AutoContentProRequiredError:
+        err_meta = ArtifactMeta(
             id=artifact_id,
             type=output_type,  # type: ignore[arg-type]
             status="error",
             filename="",
             error="Coming soon — requires AutoContent Pro plan",
         )
-    except Exception as e:  # noqa: BLE001
+        runs_store.upsert_artifact(run_id, err_meta)
         append_event(
-            run_id, "writer", "artifact.error",
-            f"Writer {output_type} error: {e}",
-            level="error",
-            data={"output_type": output_type, "error": str(e)},
+            run_id, "writer", "artifact.skipped",
+            f"{output_type} requires AutoContent Pro — skipped",
+            level="warn",
+            data={"output_type": output_type},
         )
-        return ArtifactMeta(
+        return err_meta
+    except Exception as e:  # noqa: BLE001
+        err_meta = ArtifactMeta(
             id=artifact_id,
             type=output_type,  # type: ignore[arg-type]
             status="error",
             filename="",
             error=str(e),
         )
+        runs_store.upsert_artifact(run_id, err_meta)
+        append_event(
+            run_id, "writer", "artifact.error",
+            f"Writer {output_type} error: {e}",
+            level="error",
+            data={"output_type": output_type, "error": str(e)},
+        )
+        return err_meta

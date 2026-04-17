@@ -51,7 +51,7 @@ async def chat(run_id: str, body: ChatRequest) -> ChatResponse:
 
     client = _get_client()
     response = await client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-5.4-nano",
         messages=messages,  # type: ignore[arg-type]
     )
 

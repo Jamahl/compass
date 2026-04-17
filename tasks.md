@@ -1,4 +1,4 @@
-# BetterLabs Research Studio — Build Tasks
+# BetterLabs Compass — Build Tasks
 
 Each task is atomic. Complete one, commit, move to next. Do not skip ahead.
 
@@ -103,7 +103,7 @@ server: {
 
 ### T10 — Clear default Vite boilerplate
 **Start:** Default Vite content.
-**End:** `App.tsx` renders `<div>BetterLabs Research Studio</div>`. `App.css` deleted. `index.css` keeps only Tailwind directives.
+**End:** `App.tsx` renders `<div>BetterLabs Compass</div>`. `App.css` deleted. `index.css` keeps only Tailwind directives.
 
 ---
 

@@ -84,7 +84,7 @@ export function RunSidebar({ currentRunId, onSelect }: RunSidebarProps) {
   return (
     <aside className="flex h-screen w-[260px] shrink-0 flex-col border-r bg-background">
       <div className="flex flex-col gap-3 border-b px-4 py-4">
-        <div className="text-sm font-semibold">Research Studio</div>
+        <div className="text-sm font-semibold">Compass</div>
         <Button
           type="button"
           size="sm"

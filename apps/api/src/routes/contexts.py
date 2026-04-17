@@ -2,7 +2,7 @@
 
 Exposes `GET /contexts`, which scans `<repo>/Context/` for `.md` files and
 returns lightweight metadata (name, filename, size, preview) for each. The
-frontend renders these as tickable cards in the Research Studio UI; the chosen
+frontend renders these as tickable cards in the Compass UI; the chosen
 filenames are round-tripped back to the backend via `RunRequest.context_files`.
 """
 

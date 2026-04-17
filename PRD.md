@@ -1,4 +1,4 @@
-# BetterLabs Research Studio — PRD + Architecture
+# BetterLabs Compass — PRD + Architecture
 
 **Scope:** 4-hour hackathon. Minimal web app. BetterLabs venture studio runs product/company research via agents, then generates a chosen output artifact (podcast, slides, 1-pg report, 5-pg report, competitor doc, video). Single user, no auth.
 

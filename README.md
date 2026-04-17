@@ -1,4 +1,4 @@
-# BetterLabs Research Studio
+# BetterLabs Compass
 
 Localhost hackathon app. Run a research prompt through the Parallel Task API,
 synthesise a brief with OpenAI, then fan-out to generate 14 possible output

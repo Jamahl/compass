@@ -34,7 +34,7 @@ _client: Optional[AsyncOpenAI] = None
 # Cap the JSON-dumped research payload at ~12k chars to keep prompts sane.
 _MAX_PAYLOAD_CHARS = 12_000
 
-_MODEL = "gpt-4o"
+_MODEL = "gpt-5.4-nano"
 
 
 def _get_client() -> AsyncOpenAI:

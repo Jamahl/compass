@@ -1,4 +1,4 @@
-# Project Overview — BetterLabs Research Studio
+# Project Overview — BetterLabs Compass
 
 Living doc. Updated as we build. Single source of truth for contracts, conventions, routes, data shapes. MVP-first — normalise now so adding features later is cheap.
 
@@ -25,7 +25,7 @@ Single-user localhost web app. User submits research prompt → backend runs Par
 | Transport | REST + **polling** (2s interval) | No SSE for MVP |
 | PDF | `fpdf2` (markdown → HTML → PDF) | Pure Python, no pango/cairo |
 | Persistence | SQLite (`apps/api/data/runs.db`) + file artifacts (`apps/api/data/artifacts/` or `ARTIFACTS_BASE` env) | Survives restarts |
-| External | OpenAI (`gpt-4o`), Parallel Task API, AutoContent API | All 3 keys live |
+| External | OpenAI (`gpt-5.4-nano`), Parallel Task API, AutoContent API | All 3 keys live |
 | Runtime | Localhost **or** Docker Compose | `docker compose up` runs api + web + named volume |
 
 ---
@@ -94,7 +94,7 @@ type RunStatus = "pending" | "research_done" | "completed" | "failed";
 
 | Output | Generator | File | Preview UI |
 |---|---|---|---|
-| report_1pg, report_5pg, competitor_doc | OpenAI `gpt-4o` → markdown → fpdf2 | PDF | iframe |
+| report_1pg, report_5pg, competitor_doc | OpenAI `gpt-5.4-nano` → markdown → fpdf2 | PDF | iframe |
 | briefing_doc | AutoContent `briefing_doc` | PDF | iframe |
 | podcast | AutoContent `audio` | MP3 | `<audio controls>` |
 | slides | AutoContent `slide_deck` | MP4 (narrated video) | `<video controls>` |

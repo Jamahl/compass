@@ -10,7 +10,7 @@ from src.routes import chat as chat_route
 from src.routes import contexts as contexts_route
 from src.routes import runs as runs_route
 
-app = FastAPI(title="BetterLabs Research Studio")
+app = FastAPI(title="BetterLabs Compass")
 
 app.add_middleware(
     CORSMiddleware,
