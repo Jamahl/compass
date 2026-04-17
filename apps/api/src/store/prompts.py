@@ -176,18 +176,21 @@ competitors, pricing, or quotes."""
 }
 
 
+# Sent verbatim as the AutoContent `text` field ("Instructions or query for
+# content generation"). Write these as DIRECTIVES to the generator LLM, not
+# descriptions for a human — imperative voice, one line, structural beats.
 _DEFAULT_MEDIA_GUIDANCE: dict[str, str] = {
-    "podcast":      "2–3 min single-host explainer. Conversational but authoritative. One thesis → evidence → takeaway.",
-    "video":        "Under 90s explainer. Hook in first 3 seconds. One idea, one takeaway.",
-    "slides":       "5 slides: title, problem, insight, implication, action. One sentence per slide.",
-    "infographic":  "Single portrait infographic. 3–5 data points with numeric anchors. Title + source footer.",
-    "briefing_doc": "1-page exec briefing. Overview → 3 findings → 1 recommendation.",
-    "text":         "One paragraph under 200 words. Lead with the conclusion.",
-    "faq":          "5 Q&A, descending importance. Questions phrased as a reader would ask. Answers 1–2 sentences with one concrete data point.",
-    "study_guide":  "5 key concepts. For each: plain-English definition, why it matters, one example.",
-    "timeline":     "5–7 chronological entries. Each: date → event → one-line significance.",
-    "quiz":         "5 multiple-choice, mix of recall and interpretation. 4 options each, one unambiguously correct.",
-    "datatable":    "Single comparison table. 3–5 columns, up to 5 rows. Header row required. Specific values over \"Unknown\".",
+    "podcast":      "Produce a 2–3 minute audio script. Open with a single-sentence thesis. Cover 2–3 concrete findings with specific numbers, names, or dates from the brief. Close with one actionable takeaway. Conversational and confident — no throat-clearing, no meta-commentary about the format.",
+    "video":        "Produce a script for a <90-second explainer video. First 3 seconds: a hook the viewer won't scroll past. Middle: one core idea supported by one piece of concrete evidence. Last 5 seconds: one takeaway the viewer can act on. No intro music cues, no channel branding.",
+    "slides":       "Produce exactly 5 slides. (1) Title slide: one-sentence thesis. (2) Problem — what's at stake and for whom. (3) Key insight from the brief. (4) Implication — what this means next. (5) Recommended action, starting with an imperative verb. One sentence per slide. No bullet-lists, no sub-bullets.",
+    "infographic":  "Produce a single portrait-orientation infographic. Include: a headline ≤8 words, 3–5 data points each with a numeric anchor and a one-line label, and a source footer listing the brief's sources. Avoid stock clichés (arrows pointing up, generic pie charts with unlabeled slices).",
+    "briefing_doc": "Produce a 1-page executive briefing. Structure: 2-sentence overview, 3 bulleted findings (each anchored to a number, name, or date), 1 recommendation that starts with an imperative verb. No appendix, no glossary, no table of contents.",
+    "text":         "Produce a single paragraph under 200 words. Lead with the conclusion in the first sentence. Follow with the strongest supporting evidence from the brief. End on the final evidence sentence — no wrap-up, no 'in summary'.",
+    "faq":          "Produce 5 question-and-answer pairs in descending order of importance. Phrase questions the way a curious reader would ask them (colloquial, specific, often starting with 'How', 'Why', or 'What happens if'). Each answer is 1–2 sentences containing one concrete data point or source reference from the brief.",
+    "study_guide":  "Produce a study guide covering the 5 most important concepts from the brief. For each concept, write: (1) a plain-English definition ≤25 words, (2) one sentence on why it matters, (3) one example drawn from the brief. Do not append quiz questions.",
+    "timeline":     "Produce 5–7 chronological entries. Format each as: `YYYY-MM-DD — Event (≤8 words) — Significance (1 sentence).` Only include entries whose date is confirmed in the brief; omit speculative or unscheduled items.",
+    "quiz":         "Produce 5 multiple-choice questions. Mix: 2 factual recall, 3 interpretation or inference. For each: a clear question stem, 4 answer options of roughly equal length, exactly one unambiguously correct answer. Do not use 'all of the above' or 'none of the above'.",
+    "datatable":    "Produce a single comparison table. 3–5 columns, up to 5 rows. Include a header row. Use specific values from the brief — do not write 'Unknown' or 'N/A' unless the brief genuinely lacks that data point, in which case write '— (not in research)' so the gap is visible.",
 }
 
 
