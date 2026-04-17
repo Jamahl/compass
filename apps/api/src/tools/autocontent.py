@@ -37,8 +37,9 @@ _OVERALL_TIMEOUT_SECONDS = 1800
 _BRIEF_CHAR_CAP = 2000
 
 # Per-output-type guidance lives in src/store/prompts.py (user-editable via
-# /api/prompts). AutoContent treats `text` as the user instruction, so each
-# string is appended to the job title.
+# /api/prompts). AutoContent's docs call the `text` field "Instructions or
+# query for content generation" — the content-generation LLM reads it as a
+# directive, so we send the guidance verbatim with no framing prefix.
 
 # Case-insensitive tokens that indicate a Pro/subscription gating failure.
 _PRO_ERROR_TOKENS: tuple[str, ...] = (
@@ -88,13 +89,15 @@ async def _create(
     client: httpx.AsyncClient,
     ac_type: str,
     brief: str,
-    title: str,
+    instruction: str,
     our_run_id: str | None,
 ) -> str:
     body: dict[str, object] = {
         "resources": [{"type": "text", "content": brief}],
         "outputType": ac_type,
-        "text": title,
+        # AutoContent docs describe `text` as "Instructions or query for
+        # content generation" — directive prompt, not a cosmetic title.
+        "text": instruction,
         # `includeCitations: true` is a Pro-only feature; omit it so amateur
         # keys don't 400 with "Citations are only available to PRO subscribers".
     }
@@ -111,7 +114,11 @@ async def _create(
         append_event(
             our_run_id, "autocontent", "tool.call",
             f"POST {_CREATE_URL} (outputType={ac_type})",
-            data={"outputType": ac_type, "title": title, "brief_chars": len(brief)},
+            data={
+                "outputType": ac_type,
+                "instruction": instruction,
+                "brief_chars": len(brief),
+            },
         )
     r = await client.post(_CREATE_URL, headers=_headers(), json=body)
     if r.status_code >= 400:
@@ -256,16 +263,18 @@ async def _run(
     url_field = cfg["url_field"]
     dest = get_artifact_path(run_id, artifact_id, ext)
 
-    # Trim brief and append per-type brevity guidance. Smaller payload = faster.
+    # Trim brief and look up per-output-type directive. AutoContent treats
+    # the `text` field as "Instructions or query for content generation"
+    # (confirmed against their docs), so we send the user-editable guidance
+    # straight through without any wrapping prefix — anything we prepend
+    # competes with the guidance for the LLM's attention.
     short_brief = brief if len(brief) <= _BRIEF_CHAR_CAP else brief[:_BRIEF_CHAR_CAP] + "\n\n…"
-    guidance = get_prompts().media_guidance.get(output_type, "Keep output concise.")
-    title = (
-        f"Research Output — {output_type.replace('_', ' ').title()}. "
-        f"{guidance}"
+    instruction = get_prompts().media_guidance.get(
+        output_type, "Keep output concise."
     )
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        request_id = await _create(client, ac_type, short_brief, title, run_id)
+        request_id = await _create(client, ac_type, short_brief, instruction, run_id)
         completed = await _poll_until_done(client, request_id, run_id)
 
         if url_field:
