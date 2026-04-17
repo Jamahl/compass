@@ -1,7 +1,9 @@
 {
   "name": "betterlabs-research-studio",
   "private": true,
-  "workspaces": ["apps/web"],
+  "workspaces": [
+    "apps/web"
+  ],
   "scripts": {
     "dev": "concurrently \"npm --workspace web run dev\" \"cd apps/api && .venv/bin/uvicorn main:app --reload --port 8000\"",
     "dev:web": "npm --workspace web run dev",
@@ -9,5 +11,9 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "lucide-react": "^1.8.0",
+    "react": "^19.2.5"
   }
 }
