@@ -56,7 +56,12 @@ export function InputPanel({
     getContexts().then(setContexts).catch(console.error)
   }, [])
 
-  const currentDepth = DEPTH_LEVELS[depthIdx]
+  // Guard against base-ui's Slider ever emitting out-of-range / non-integer
+  // values (e.g. when the user clicks the track). Falls back to index 0.
+  const safeDepthIdx = Number.isInteger(depthIdx)
+    ? Math.max(0, Math.min(DEPTH_LEVELS.length - 1, depthIdx))
+    : 0
+  const currentDepth = DEPTH_LEVELS[safeDepthIdx] ?? DEPTH_LEVELS[0]
   const selectedTemplate = TEMPLATES.find((t) => t.id === template)
 
   const promptTrimmedEmpty = prompt.trim().length === 0
@@ -218,10 +223,18 @@ export function InputPanel({
             min={0}
             max={3}
             step={1}
-            value={[depthIdx]}
+            value={[safeDepthIdx]}
             onValueChange={(v) => {
-              const arr = v as number[]
-              setDepthIdx(arr[0])
+              // base-ui emits either number or number[] depending on
+              // internal state. Normalise + clamp + round defensively.
+              const raw = Array.isArray(v) ? v[0] : (v as number)
+              if (typeof raw !== 'number' || Number.isNaN(raw)) return
+              const rounded = Math.round(raw)
+              const clamped = Math.max(
+                0,
+                Math.min(DEPTH_LEVELS.length - 1, rounded),
+              )
+              setDepthIdx(clamped)
             }}
             disabled={disabled}
           />
