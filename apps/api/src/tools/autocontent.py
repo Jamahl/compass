@@ -81,12 +81,18 @@ async def _create(
         "resources": [{"type": "text", "content": brief}],
         "outputType": ac_type,
         "text": title,
-        "includeCitations": True,
+        # `includeCitations: true` is a Pro-only feature; omit it so amateur
+        # keys don't 400 with "Citations are only available to PRO subscribers".
     }
     r = await client.post(_CREATE_URL, headers=_headers(), json=body)
     if r.status_code >= 400:
+        body_text = r.text[:500]
+        if _is_pro_error(body_text):
+            raise AutoContentProRequiredError(
+                "This output requires an AutoContent Pro plan — coming soon!"
+            )
         raise RuntimeError(
-            f"AutoContent create failed {r.status_code}: {r.text[:300]}"
+            f"AutoContent create failed {r.status_code}: {body_text[:300]}"
         )
     data = r.json()
     rid = data.get("request_id") or data.get("id")

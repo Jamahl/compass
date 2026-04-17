@@ -14,8 +14,32 @@ from pathlib import Path
 
 import markdown
 from fpdf import FPDF
+from unidecode import unidecode
 
 from src.store.artifacts_dir import get_artifact_path
+
+
+# Common unicode glyphs the LLM loves to emit, mapped to visually-similar
+# ASCII. Applied before `unidecode` so we can control the most frequent
+# substitutions tightly (avoids unidecode mangling things like em-dashes).
+_GLYPH_MAP: dict[str, str] = {
+    "\u2018": "'", "\u2019": "'",         # curly single quotes
+    "\u201c": '"', "\u201d": '"',         # curly double quotes
+    "\u2013": "-", "\u2014": "--",        # en / em dash
+    "\u2026": "...",                      # ellipsis
+    "\u2022": "*",                        # bullet
+    "\u2192": "->", "\u2190": "<-",       # arrows
+    "\u00a0": " ",                        # non-breaking space
+}
+
+
+def _to_latin1_safe(text: str) -> str:
+    """Make `text` safe for fpdf2's built-in Helvetica (Latin-1 only)."""
+    for src, dst in _GLYPH_MAP.items():
+        text = text.replace(src, dst)
+    # unidecode handles anything else (accents, CJK, symbols) by
+    # transliterating to ASCII. Pure Python, no font files needed.
+    return unidecode(text)
 
 
 def _html_escape(text: str) -> str:
@@ -52,6 +76,10 @@ def generate_report_pdf(
     - Feeds through fpdf2's write_html (letter page, 1in margins).
     - Writes to artifacts dir as `{run_id}/{artifact_id}.pdf`.
     """
+    # Sanitise BEFORE markdown so non-Latin-1 chars never reach fpdf.
+    content_md = _to_latin1_safe(content_md)
+    title = _to_latin1_safe(title)
+
     body_html = markdown.markdown(
         content_md,
         extensions=["tables", "fenced_code"],
