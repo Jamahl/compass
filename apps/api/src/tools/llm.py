@@ -17,11 +17,13 @@ validation until the first call.
 from __future__ import annotations
 
 import json
+import time
 from typing import Optional
 
 from openai import AsyncOpenAI
 
 from src.config import OPENAI_API_KEY
+from src.store.events import append_event
 
 # ---------------------------------------------------------------------------
 # Client singleton (lazy)
@@ -58,106 +60,96 @@ def _truncate(text: str, limit: int = _MAX_PAYLOAD_CHARS) -> str:
 # ---------------------------------------------------------------------------
 
 _SYNTHESIZE_SYSTEM = """You are a senior research analyst. You will be given a raw research payload \
-(JSON) produced by an external deep-research tool. Distil it into a compact, \
+(JSON) produced by an external deep-research tool. Distil it into a TIGHT, \
 decision-ready brief in Markdown with EXACTLY these sections and headings:
 
 ## Executive Summary
-2-3 tight sentences capturing the single most important takeaway.
+1-2 sentences. The single most important takeaway.
 
 ## Key Findings
-A bulleted list (5-10 bullets). Each bullet should be a concrete finding, not a \
-restatement of the prompt. Prefer specificity (numbers, names, dates) over generalities.
+3-5 bullets max. Each bullet ≤ 25 words. Concrete, specific (numbers, names, dates).
 
 ## Sources
-A bulleted list of URLs / citations extracted from the payload. If the payload \
-contains URLs, list them verbatim. If it contains citations without URLs, list \
-those. De-duplicate. If no sources are present, write "No sources provided in \
-research payload."
+Bulleted URLs/citations from the payload. De-duplicate. If none, write "No sources provided."
 
 Rules:
 - Output ONLY the Markdown brief. No preamble, no postscript, no code fences.
 - Do not invent facts or sources not present in the payload.
-- Keep the whole brief under ~500 words."""
+- Keep the whole brief under 250 words."""
 
 
 _REPORT_SYSTEMS: dict[str, str] = {
-    "report_1pg": """You are a strategy writer producing a ONE-PAGE executive report in \
-Markdown. Target length: 400-600 words. Use EXACTLY these sections:
+    "report_1pg": """You are a strategy writer producing a SHORT executive brief in Markdown. \
+Target length: 150-250 words. Use EXACTLY these sections:
 
 # <Concise Title>
 
 ## Overview
-A short paragraph (3-5 sentences) framing the subject and why it matters.
+2-3 sentences framing the subject.
 
 ## Key Findings
-3-5 bullets. Each bullet one sentence, punchy, specific.
+3 bullets. Each bullet one short sentence.
 
 ## Recommendation
-A short paragraph (3-5 sentences) with a clear, actionable recommendation.
+2-3 sentences with a clear, actionable recommendation.
 
 Rules:
 - Output Markdown only. No code fences, no preamble.
-- Stay within the target word count. One page, no filler.
+- Stay within 250 words. No filler.
 - Use only information present in the provided brief. Do not fabricate.""",
 
-    "report_5pg": """You are a strategy writer producing a FIVE-PAGE in-depth report in \
-Markdown. Target length: 2000-3000 words. Use EXACTLY these sections with \
-Markdown headings:
+    "report_5pg": """You are a strategy writer producing a CONCISE in-depth report in Markdown. \
+Target length: 600-900 words. Use EXACTLY these sections:
 
 # <Concise Title>
 
 ## Executive Summary
-Tight opening (150-250 words) with the headline conclusions.
+80-120 words with the headline conclusions.
 
 ## Context
-Background, scope, why this matters now. (300-450 words.)
+2 short paragraphs (120-180 words) on background and why it matters now.
 
 ## Findings
-Use ### subheadings to group related findings. Cover the material thoroughly. \
-(700-1000 words total across subheadings.)
+3-5 bullets or short paragraphs (200-300 words total). Concrete and specific.
 
 ## Analysis
-Synthesise the findings: what do they mean, how do the pieces interact, what's \
-the signal vs noise. (400-600 words.)
+1-2 paragraphs (100-150 words) on what the findings mean.
 
 ## Risks
-Bulleted or short-paragraph list of material risks, caveats, and unknowns. \
-(150-300 words.)
+3 bullets covering material risks/unknowns.
 
 ## Recommendations
-Numbered list of concrete, prioritised recommendations. Each item: 1-2 sentences. \
-(150-300 words.)
+Numbered list, 3 items. Each 1 sentence.
 
 Rules:
 - Output Markdown only. No code fences, no preamble.
-- Hit the target length — this is a substantive report, not a summary.
+- Stay within 900 words.
 - Use only information present in the provided brief. Do not fabricate sources \
-or statistics. If the brief is thin, say so explicitly in Context.""",
+or statistics.""",
 
-    "competitor_doc": """You are a competitive intelligence analyst producing a \
-table-heavy competitor landscape document in Markdown.
+    "competitor_doc": """You are a competitive intelligence analyst producing a CONCISE \
+competitor landscape document in Markdown. Target: under 500 words total.
 
 Required structure:
 
 # Competitor Landscape: <Concise Title>
 
 ## Landscape Overview
-2-4 paragraphs framing the market, the axes of competition, and how players \
-cluster.
+1 short paragraph (60-100 words) framing the market and how players cluster.
 
 ## Competitor Comparison
 A Markdown table with EXACTLY these columns in this order:
 
 | Competitor | Positioning | Strengths | Weaknesses | Pricing |
 
-Populate one row per competitor identified in the brief. Keep cells concise \
-(one short phrase or sentence per cell). If a value is unknown, write "Unknown".
+Populate up to 5 rows max. Keep each cell to a short phrase. If a value is \
+unknown, write "Unknown".
 
 ## Per-Competitor Notes
-For each competitor in the table, a short subsection:
+For each competitor in the table:
 
 ### <Competitor Name>
-2-4 sentences of additional context, differentiation, and go-to-market notes.
+1-2 sentences of differentiation/go-to-market.
 
 Rules:
 - Output Markdown only. No code fences, no preamble.
@@ -171,7 +163,7 @@ competitors, pricing, or quotes.""",
 # Public API
 # ---------------------------------------------------------------------------
 
-async def synthesize(research_payload: dict) -> str:
+async def synthesize(research_payload: dict, *, run_id: str | None = None) -> str:
     """Distil a raw research payload into a compact markdown brief.
 
     Calls OpenAI `gpt-4o` with a fixed system prompt instructing the model to
@@ -183,6 +175,13 @@ async def synthesize(research_payload: dict) -> str:
     payload_json = json.dumps(research_payload, indent=2, default=str)
     payload_json = _truncate(payload_json)
 
+    if run_id:
+        append_event(
+            run_id, "llm", "tool.call",
+            f"OpenAI {_MODEL} synthesize ({len(payload_json)} chars in)",
+            data={"model": _MODEL, "input_chars": len(payload_json)},
+        )
+    started = time.monotonic()
     response = await client.chat.completions.create(
         model=_MODEL,
         messages=[
@@ -192,10 +191,35 @@ async def synthesize(research_payload: dict) -> str:
     )
 
     content = response.choices[0].message.content or ""
-    return content.strip()
+    out = content.strip()
+    if run_id:
+        usage = getattr(response, "usage", None)
+        usage_dict = (
+            {
+                "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                "completion_tokens": getattr(usage, "completion_tokens", None),
+                "total_tokens": getattr(usage, "total_tokens", None),
+            }
+            if usage is not None
+            else None
+        )
+        append_event(
+            run_id, "llm", "tool.result",
+            f"OpenAI synthesize done — {len(out)} chars in "
+            f"{time.monotonic() - started:.1f}s",
+            data={
+                "model": _MODEL,
+                "output_chars": len(out),
+                "elapsed_s": round(time.monotonic() - started, 2),
+                "usage": usage_dict,
+            },
+        )
+    return out
 
 
-async def write_report(brief: str, report_type: str) -> str:
+async def write_report(
+    brief: str, report_type: str, *, run_id: str | None = None
+) -> str:
     """Expand a brief into a finished markdown report of the given type.
 
     `report_type` must be one of: `report_1pg`, `report_5pg`, `competitor_doc`.
@@ -210,6 +234,17 @@ async def write_report(brief: str, report_type: str) -> str:
     client = _get_client()
     system_prompt = _REPORT_SYSTEMS[report_type]
 
+    if run_id:
+        append_event(
+            run_id, "llm", "tool.call",
+            f"OpenAI {_MODEL} write_report({report_type})",
+            data={
+                "model": _MODEL,
+                "report_type": report_type,
+                "brief_chars": len(brief),
+            },
+        )
+    started = time.monotonic()
     response = await client.chat.completions.create(
         model=_MODEL,
         messages=[
@@ -219,4 +254,28 @@ async def write_report(brief: str, report_type: str) -> str:
     )
 
     content = response.choices[0].message.content or ""
-    return content.strip()
+    out = content.strip()
+    if run_id:
+        usage = getattr(response, "usage", None)
+        usage_dict = (
+            {
+                "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                "completion_tokens": getattr(usage, "completion_tokens", None),
+                "total_tokens": getattr(usage, "total_tokens", None),
+            }
+            if usage is not None
+            else None
+        )
+        append_event(
+            run_id, "llm", "tool.result",
+            f"OpenAI write_report({report_type}) done — {len(out)} chars in "
+            f"{time.monotonic() - started:.1f}s",
+            data={
+                "model": _MODEL,
+                "report_type": report_type,
+                "output_chars": len(out),
+                "elapsed_s": round(time.monotonic() - started, 2),
+                "usage": usage_dict,
+            },
+        )
+    return out

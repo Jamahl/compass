@@ -101,6 +101,33 @@ export async function getRun(runId: string): Promise<RunState> {
   return (await res.json()) as RunState
 }
 
+export type EventLevel = 'debug' | 'info' | 'warn' | 'error'
+
+export interface RunEvent {
+  id: number
+  run_id: string
+  ts: string // ISO 8601 UTC
+  level: EventLevel
+  source: string
+  type: string
+  message: string
+  data: Record<string, unknown> | null
+}
+
+export async function listEvents(
+  runId: string,
+  since = 0,
+  limit = 1000,
+): Promise<RunEvent[]> {
+  const params = new URLSearchParams({
+    since: String(since),
+    limit: String(limit),
+  })
+  const res = await fetch(`/api/runs/${runId}/events?${params.toString()}`)
+  await ensureOk(res)
+  return (await res.json()) as RunEvent[]
+}
+
 export async function postChat(
   runId: string,
   message: string,

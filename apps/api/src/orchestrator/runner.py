@@ -18,7 +18,8 @@ from uuid import uuid4
 
 from ..models import ArtifactMeta, RunRequest
 from ..store import runs as runs_store
-from ..store.contexts_dir import load_context_files
+from ..store.contexts_dir import get_contexts_base, load_context_files
+from ..store.events import append_event
 from ..tools import llm, parallel
 from . import writer
 
@@ -26,15 +27,39 @@ from . import writer
 async def start(run_id: str, request: RunRequest) -> None:
     """Run research → synthesize → writer fan-out for a single run."""
     try:
+        append_event(
+            run_id, "runner", "run.start",
+            f"Run started — template={request.template} depth={request.depth} "
+            f"outputs={request.outputs}",
+            data={
+                "prompt": request.prompt[:500],
+                "urls": request.urls,
+                "template": request.template,
+                "depth": request.depth,
+                "outputs": request.outputs,
+                "context_files": request.context_files,
+            },
+        )
         # ---- 1. Research -----------------------------------------------------
         runs_store.update_stage(run_id, "research", "running")
+        append_event(
+            run_id, "runner", "stage.start",
+            "Stage research started",
+            data={"stage": "research"},
+        )
 
         # If the user selected context files, load them and prepend to the
         # prompt as an "Internal Context" block. Leaves urls/template/depth
         # untouched — context only affects the prompt text.
         research_prompt = request.prompt
         if request.context_files:
+            base = get_contexts_base()
             loaded = load_context_files(request.context_files)
+            loaded_names = [name for name, _ in loaded]
+            missing = [
+                f for f in request.context_files
+                if f and not any(n.lower() == f.rsplit('.', 1)[0].lower() for n in loaded_names)
+            ]
             if loaded:
                 blocks = "\n\n".join(
                     f"## {name}\n{content}" for name, content in loaded
@@ -47,6 +72,36 @@ async def start(run_id: str, request: RunRequest) -> None:
                     "RESEARCH REQUEST:\n"
                     f"{request.prompt}"
                 )
+                append_event(
+                    run_id, "runner", "context.loaded",
+                    f"Loaded {len(loaded)} context file(s) into research prompt: "
+                    f"{', '.join(loaded_names)}",
+                    data={
+                        "base_dir": str(base),
+                        "files": loaded_names,
+                        "requested": request.context_files,
+                        "missing": missing,
+                        "total_chars": sum(len(c) for _, c in loaded),
+                        "prompt_chars": len(research_prompt),
+                    },
+                )
+            else:
+                append_event(
+                    run_id, "runner", "context.empty",
+                    f"Context requested but none loaded "
+                    f"(base={base}, requested={request.context_files})",
+                    level="warn",
+                    data={
+                        "base_dir": str(base),
+                        "requested": request.context_files,
+                        "base_exists": base.exists(),
+                    },
+                )
+        else:
+            append_event(
+                run_id, "runner", "context.none",
+                "No context files selected — using prompt only",
+            )
 
         try:
             payload = await parallel.run_research(
@@ -54,14 +109,29 @@ async def start(run_id: str, request: RunRequest) -> None:
                 request.urls,
                 request.template,
                 request.depth,
+                run_id=run_id,
             )
             runs_store.update_run(
                 run_id, research_payload=json.dumps(payload)
             )
             runs_store.update_stage(run_id, "research", "done")
+            append_event(
+                run_id, "runner", "stage.done",
+                "Stage research complete",
+                data={
+                    "stage": "research",
+                    "payload_chars": len(json.dumps(payload, default=str)),
+                },
+            )
         except Exception as e:  # noqa: BLE001 — stage-level catch
             runs_store.update_stage(run_id, "research", "error", str(e))
             runs_store.update_run(run_id, status="failed")
+            append_event(
+                run_id, "runner", "stage.error",
+                f"Stage research failed: {e}",
+                level="error",
+                data={"stage": "research", "error": str(e)},
+            )
             return
 
         # Chat unlocks at this point (research_payload populated).
@@ -69,12 +139,28 @@ async def start(run_id: str, request: RunRequest) -> None:
 
         # ---- 2. Synthesize ---------------------------------------------------
         runs_store.update_stage(run_id, "synthesize", "running")
+        append_event(
+            run_id, "runner", "stage.start",
+            "Stage synthesize started",
+            data={"stage": "synthesize"},
+        )
         try:
-            brief = await llm.synthesize(payload)
+            brief = await llm.synthesize(payload, run_id=run_id)
             runs_store.update_stage(run_id, "synthesize", "done")
+            append_event(
+                run_id, "runner", "stage.done",
+                "Stage synthesize complete",
+                data={"stage": "synthesize", "brief_chars": len(brief)},
+            )
         except Exception as e:  # noqa: BLE001
             runs_store.update_stage(run_id, "synthesize", "error", str(e))
             runs_store.update_run(run_id, status="failed")
+            append_event(
+                run_id, "runner", "stage.error",
+                f"Stage synthesize failed: {e}",
+                level="error",
+                data={"stage": "synthesize", "error": str(e)},
+            )
             return
 
         # ---- 3. Writer fan-out ----------------------------------------------
@@ -90,6 +176,12 @@ async def start(run_id: str, request: RunRequest) -> None:
             runs_store.upsert_artifact(run_id, meta)
             pairs.append((artifact_id, output_type))
 
+        append_event(
+            run_id, "runner", "writer.fanout",
+            f"Dispatching {len(pairs)} writer task(s)",
+            data={"outputs": [otype for _, otype in pairs]},
+        )
+
         results = await asyncio.gather(
             *[
                 writer.generate_output(run_id, aid, otype, brief)
@@ -98,8 +190,13 @@ async def start(run_id: str, request: RunRequest) -> None:
             return_exceptions=True,
         )
 
+        # Writer.generate_output catches all internal errors and returns an
+        # ArtifactMeta with status="error" — it never raises. The Exception
+        # branch is reserved for unexpected failures asyncio.gather catches.
+        ok = err = 0
         for (aid, otype), result in zip(pairs, results):
             if isinstance(result, Exception):
+                err += 1
                 runs_store.upsert_artifact(
                     run_id,
                     ArtifactMeta(
@@ -110,14 +207,35 @@ async def start(run_id: str, request: RunRequest) -> None:
                         error=str(result),
                     ),
                 )
+                append_event(
+                    run_id, "writer", "artifact.error",
+                    f"Writer {otype} failed: {result}",
+                    level="error",
+                    data={"output_type": otype, "error": str(result)},
+                )
             else:
+                if result.status == "error":
+                    err += 1
+                else:
+                    ok += 1
                 runs_store.upsert_artifact(run_id, result)
 
         # Run is "completed" even if some artifacts errored.
         runs_store.update_run(run_id, status="completed")
+        append_event(
+            run_id, "runner", "run.done",
+            f"Run complete — {ok} ok, {err} failed",
+            data={"ok": ok, "err": err},
+        )
 
     except Exception as e:  # noqa: BLE001 — outer guard
         # Belt-and-braces: any unhandled exception must not kill the task.
         runs_store.update_run(run_id, status="failed")
         # Best-effort surface of the error on whatever stage is running.
         runs_store.update_stage(run_id, "runner", "error", str(e))
+        append_event(
+            run_id, "runner", "run.fatal",
+            f"Run aborted: {e}",
+            level="error",
+            data={"error": str(e)},
+        )

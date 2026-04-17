@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException
 from ..models import RunRequest, RunState
 from ..orchestrator import runner
 from ..store import runs as runs_store
+from ..store import events as events_store
 
 router = APIRouter()
 
@@ -49,3 +50,21 @@ async def get_run(run_id: str) -> RunState:
     if state is None:
         raise HTTPException(status_code=404, detail="run not found")
     return state
+
+
+_EVENTS_MAX_LIMIT = 5000
+
+
+@router.get("/runs/{run_id}/events")
+def get_events(run_id: str, since: int = 0, limit: int = 1000) -> list[dict]:
+    """Incremental event log for the live "thinking" UI.
+
+    Returns events with id > ``since`` in ascending id order. Clients pass
+    the highest id they've seen as ``since`` to fetch only new entries.
+    Capped at ``limit`` (default 1000, hard ceiling 5000) per response.
+    """
+    if runs_store.get_run(run_id) is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    safe_since = max(0, since)
+    safe_limit = max(1, min(limit, _EVENTS_MAX_LIMIT))
+    return events_store.list_events(run_id, since=safe_since, limit=safe_limit)

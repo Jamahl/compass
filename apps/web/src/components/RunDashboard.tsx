@@ -6,6 +6,7 @@ import { pollRun } from '@/api/polling'
 import type { Stage } from '@/api/client'
 import { useStore } from '@/state/store'
 import { ArtifactCard } from './ArtifactCard'
+import { LiveThinking } from './LiveThinking'
 
 interface RunDashboardProps {
   runId: string
@@ -123,6 +124,13 @@ export function RunDashboard({ runId }: RunDashboardProps) {
           </Card>
         ))}
       </div>
+
+      <LiveThinking
+        runId={runId}
+        isTerminal={
+          runState.status === 'completed' || runState.status === 'failed'
+        }
+      />
 
       {runState.artifacts.length > 0 && (
         <div className="flex flex-col gap-2">
