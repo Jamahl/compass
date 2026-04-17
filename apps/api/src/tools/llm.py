@@ -9,9 +9,9 @@ Two async public functions:
   report whose length/structure depends on `report_type`
   (`report_1pg`, `report_5pg`, `competitor_doc`).
 
-Both call OpenAI `gpt-4o` via `openai.AsyncOpenAI`. The client is lazy-initialised
-as a module-level singleton so import of this module does not force network/key
-validation until the first call.
+Both call OpenAI via `openai.AsyncOpenAI` using the model named in `_MODEL`.
+The client is lazy-initialised as a module-level singleton so import of this
+module does not force network/key validation until the first call.
 """
 
 from __future__ import annotations
@@ -68,9 +68,10 @@ def _truncate(text: str, limit: int = _MAX_PAYLOAD_CHARS) -> str:
 async def synthesize(research_payload: dict, *, run_id: str | None = None) -> str:
     """Distil a raw research payload into a compact markdown brief.
 
-    Calls OpenAI `gpt-4o` with a fixed system prompt instructing the model to
-    produce an Executive Summary, Key Findings, and Sources section. The user
-    message is the JSON-dumped payload, truncated at ~12k chars.
+    Calls OpenAI (model from `_MODEL`) with a fixed system prompt instructing
+    the model to produce an Executive Summary, Key Findings, and Sources
+    section. The user message is the JSON-dumped payload, truncated at ~12k
+    chars.
     """
     client = _get_client()
 

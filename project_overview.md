@@ -185,6 +185,7 @@ runner.start:
 
   2. stages += Stage("synthesize", running)
      llm.synthesize(payload) → brief (markdown)
+     brief written to {artifacts_base}/{run_id}/brief.md   # chat-context sidecar
      stages["synthesize"] = done
 
   3. for each output in req.outputs:
@@ -193,6 +194,9 @@ runner.start:
         writer.generate_output(run_id, type, brief) for each
      )
      each resolves → update ArtifactMeta in store
+     report types (report_1pg | report_5pg | competitor_doc) also write a
+     source-markdown sidecar at {run_id}/{artifact_id}.md pre-PDF render so
+     the chat route can include report content as context.
 
   4. status = completed  (even if some artifacts errored)
 
@@ -392,6 +396,7 @@ Backend:  http://localhost:8000
 - **Docker Compose** — `Dockerfile` per service, `docker-compose.yml` with `api_data` volume + read-only Context mount. Web container proxies via `VITE_API_URL=http://api:8000`. **Source is baked, not bind-mounted — see Section 10 Option B for the rebuild rule.**
 - **Live thinking event log** — `apps/api/src/store/events.py` (separate `events.db`), `GET /runs/{id}/events?since=N`, `LiveThinking.tsx` poll component on the dashboard. Surfaces tool calls, status transitions, OpenAI token usage, AutoContent poll status, errors, timing — color-coded by source, expandable JSON `data`, pause toggle, auto-scroll with manual override. Confirmed live: context files reach Parallel as INTERNAL CONTEXT block (event `runner/context.loaded` shows `prompt_chars` and file names).
 - **Prompt settings page** — gear in `RunSidebar` swaps the main panel for `SettingsPanel.tsx`: editable textareas for the brief-synth prompt, the three report writers (collapsible), and the 11 media-guidance strings (2-col grid). Per-field Reset + global Reset-everything + Discard + dirty indicator. Backend: `apps/api/src/store/prompts.py` holds defaults + mtime-cached JSON store with atomic writes; `apps/api/src/routes/prompts.py` exposes `GET/PUT /prompts` and `POST /prompts/reset`. Runs pick up edits with no restart. `llm.synthesize`, `llm.write_report`, `autocontent.generate_autocontent` all read from the store each call.
+- **Chat panel relocation + markdown rendering + enriched context** — `ChatPanel.tsx` moved from the right column into the middle column (under the "Current Run" card), wrapped in a `Card` with a header/badge showing `Research ready · N/M outputs` and fixed at `h-[640px]`. Assistant replies render through the prompt-kit `Markdown` component (installed via `npx shadcn add https://prompt-kit.com/c/markdown.json`, pulls `ui/markdown.tsx` + `ui/code-block.tsx`, uses the existing `react-markdown` + `remark-gfm` and adds `marked` + `remark-breaks` + `shiki` + `@tailwindcss/typography` via `@plugin` in `index.css`). Empty state shows a "Chat context loaded" card (Parallel payload + done artifact types + still-generating count) and three suggestion chips. Backend chat context now includes: the Parallel JSON payload (first 15k chars), the synthesized brief from `brief.md` (8k chars, when present), inlined text bodies from AutoContent text outputs and report `.md` sidecars (per-artifact 4k, total 24k), and an `ARTIFACTS PRODUCED` list summarising every artifact + status. Sidecar writes are best-effort (`OSError` caught, warn event appended); a failed sidecar never blocks the pipeline. `chat.py` rejects PDF/binary filenames by `suffix` check and falls back to `{artifact_id}.md` only when it exists.
 
 ### Known deviations from tasks.md
 

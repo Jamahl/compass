@@ -81,35 +81,35 @@ function App() {
               />
             </>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Run</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Run ID:</span>{' '}
-                  <code className="text-xs">{currentRunId}</code>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Status:</span>{' '}
-                  {runState?.status ?? 'loading…'}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Outputs:</span>{' '}
-                  {runState?.artifacts.map((a) => a.type).join(', ') || '—'}
-                </div>
-              </CardContent>
-            </Card>
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Current Run</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Run ID:</span>{' '}
+                    <code className="text-xs">{currentRunId}</code>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Status:</span>{' '}
+                    {runState?.status ?? 'loading…'}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Outputs:</span>{' '}
+                    {runState?.artifacts.map((a) => a.type).join(', ') || '—'}
+                  </div>
+                </CardContent>
+              </Card>
+              <ChatPanel runId={currentRunId} researchReady={researchReady} />
+            </>
           )}
         </div>
 
         {/* RIGHT column */}
         <div className="flex-1 space-y-6 lg:w-[420px] lg:max-w-[420px] lg:flex-none">
           {currentRunId ? (
-            <>
-              <RunDashboard runId={currentRunId} />
-              <ChatPanel runId={currentRunId} researchReady={researchReady} />
-            </>
+            <RunDashboard runId={currentRunId} />
           ) : (
             <Card>
               <CardHeader>

@@ -17,6 +17,7 @@ import asyncio
 
 from ..models import ArtifactMeta
 from ..store import runs as runs_store
+from ..store.artifacts_dir import artifacts_base
 from ..store.events import append_event
 from ..tools import autocontent, elevenlabs, llm, reportgen
 from ..tools.autocontent import AutoContentProRequiredError
@@ -66,6 +67,23 @@ async def generate_output(
                 f"Rendering PDF for {output_type} ({len(content_md)} md chars)",
                 data={"output_type": output_type, "md_chars": len(content_md)},
             )
+            # Persist source markdown as a sidecar so the chat route can
+            # fold report content into its context (PDFs aren't text-readable).
+            # Best-effort — failure here does not block PDF render.
+            if content_md.strip():
+                try:
+                    sidecar = artifacts_base() / run_id / f"{artifact_id}.md"
+                    sidecar.parent.mkdir(parents=True, exist_ok=True)
+                    sidecar.write_text(
+                        f"# {title}\n\n{content_md}", encoding="utf-8"
+                    )
+                except OSError as sidecar_err:
+                    append_event(
+                        run_id, "writer", "report.sidecar_skip",
+                        f"Report sidecar .md skipped: {sidecar_err}",
+                        level="warn",
+                        data={"output_type": output_type},
+                    )
             path = await asyncio.to_thread(
                 reportgen.generate_report_pdf,
                 run_id,
