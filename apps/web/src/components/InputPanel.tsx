@@ -34,13 +34,20 @@ export function InputPanel({
   const [template, setTemplate] = useState<Template>('custom')
   const [depthIdx, setDepthIdx] = useState<number>(1)
   const [contexts, setContexts] = useState<ContextFile[]>([])
-  const [selectedContexts, setSelectedContexts] = useState<Set<string>>(
-    new Set(),
-  )
+  const [selectedContexts, setSelectedContexts] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     getContexts().then(setContexts).catch(console.error)
   }, [])
+
+  const toggleContext = (filename: string) => {
+    setSelectedContexts((prev) => {
+      const next = new Set(prev)
+      if (next.has(filename)) next.delete(filename)
+      else next.add(filename)
+      return next
+    })
+  }
 
   // Guard against base-ui's Slider ever emitting out-of-range / non-integer
   // values (e.g. when the user clicks the track). Falls back to index 0.
@@ -53,18 +60,6 @@ export function InputPanel({
   const promptTrimmedEmpty = prompt.trim().length === 0
   const submitDisabled =
     disabled || promptTrimmedEmpty || selectedOutputs.length === 0
-
-  const toggleContext = (filename: string) => {
-    setSelectedContexts((prev) => {
-      const next = new Set(prev)
-      if (next.has(filename)) {
-        next.delete(filename)
-      } else {
-        next.add(filename)
-      }
-      return next
-    })
-  }
 
   const handleSubmit = () => {
     if (submitDisabled) return
@@ -125,12 +120,8 @@ export function InputPanel({
 
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold text-on-surface-variant">Context Files</label>
-        {contexts.length === 0 ? (
-          <p className="text-xs text-on-surface-variant italic">
-            No files in Context/. Drop .md files there to enable.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {contexts.length > 0 && (
+          <div className="flex flex-wrap gap-2">
             {contexts.map((ctx) => {
               const isSelected = selectedContexts.has(ctx.filename)
               return (
@@ -140,16 +131,13 @@ export function InputPanel({
                   onClick={() => toggleContext(ctx.filename)}
                   disabled={disabled}
                   className={cn(
-                    'rounded-xl p-3 text-left transition-all',
+                    'rounded-full px-3 py-1.5 text-xs font-semibold transition-all',
                     isSelected
-                      ? 'border border-primary/20 bg-accent/30'
-                      : 'border border-outline-variant/20 bg-surface-container-lowest hover:border-outline-variant/40',
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest',
                   )}
                 >
-                  <div className="text-sm font-semibold text-on-surface">{ctx.name}</div>
-                  <p className="text-[11px] text-on-surface-variant line-clamp-2 mt-0.5">
-                    {ctx.preview}
-                  </p>
+                  {ctx.name}
                 </button>
               )
             })}

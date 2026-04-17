@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Compass Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary": "#f2f1ff",
+                      "primary-container": "#6c9fff",
+                      "secondary-container": "#c6cfff",
+                      "surface-dim": "#cad2ff",
+                      "tertiary-container": "#f39cfb",
+                      "on-surface": "#232c51",
+                      "on-secondary-fixed-variant": "#2b48ac",
+                      "on-error": "#ffefee",
+                      "surface-container-low": "#efefff",
+                      "surface-bright": "#f7f5ff",
+                      "on-background": "#232c51",
+                      "primary-fixed": "#6c9fff",
+                      "surface-container-highest": "#d5dbff",
+                      "on-primary-container": "#00214e",
+                      "on-tertiary-container": "#60136d",
+                      "on-tertiary-fixed": "#41004d",
+                      "inverse-on-surface": "#929bc6",
+                      "error-container": "#fb5151",
+                      "tertiary-fixed-dim": "#e48fed",
+                      "on-primary": "#f0f2ff",
+                      "surface-tint": "#0058ba",
+                      "tertiary-fixed": "#f39cfb",
+                      "error-dim": "#9f0519",
+                      "secondary-fixed": "#c6cfff",
+                      "outline-variant": "#a2abd7",
+                      "error": "#b31b25",
+                      "background": "#f7f5ff",
+                      "on-primary-fixed-variant": "#002a60",
+                      "secondary": "#3854b7",
+                      "primary-dim": "#004da4",
+                      "on-primary-fixed": "#000000",
+                      "secondary-fixed-dim": "#b3c1ff",
+                      "on-surface-variant": "#505a81",
+                      "primary": "#0058ba",
+                      "surface-container-high": "#dde1ff",
+                      "on-error-container": "#570008",
+                      "inverse-surface": "#020a2f",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-dim": "#2a47ab",
+                      "outline": "#6c759e",
+                      "tertiary": "#883c93",
+                      "surface": "#f7f5ff",
+                      "on-tertiary-fixed-variant": "#6a1f77",
+                      "inverse-primary": "#4a8eff",
+                      "surface-container": "#e4e7ff",
+                      "primary-fixed-dim": "#5091ff",
+                      "on-secondary-container": "#1f3ea2",
+                      "on-secondary-fixed": "#00298b",
+                      "tertiary-dim": "#7a2f86",
+                      "on-tertiary": "#ffeefb",
+                      "surface-variant": "#d5dbff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {},
+              "fontFamily": {
+                      "headline": [
+                              "Manrope"
+                      ],
+                      "body": [
+                              "Inter"
+                      ],
+                      "label": [
+                              "Inter"
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .ghost-border { border: 1px solid rgba(162, 171, 215, 0.15); }
+        .glass-panel { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(24px); }
+        .hero-gradient { background: linear-gradient(135deg, #0058ba, #004da4); }
+        .ambient-shadow { box-shadow: 0 32px 64px -15px rgba(35, 44, 81, 0.06); }
+      </style>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen flex selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (Shared Component) -->
+<aside class="hidden md:flex flex-col py-8 px-6 gap-8 bg-[#f7f5ff] dark:bg-[#232c51] h-screen w-72 fixed left-0 top-0 z-40 border-r ghost-border">
+<div class="flex items-center gap-3 px-2">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">explore</span>
+</div>
+<div>
+<h1 class="text-xl font-black text-[#0058ba] font-headline tracking-tight">Compass</h1>
+<p class="text-[0.65rem] text-on-surface-variant font-label tracking-widest uppercase mt-0.5">Venture Velocity</p>
+</div>
+</div>
+<button class="w-full flex items-center justify-center gap-2 hero-gradient text-on-primary py-3 px-4 rounded-md font-semibold text-sm hover:opacity-90 transition-all shadow-sm">
+<span class="material-symbols-outlined text-[1.1rem]">add</span>
+            New Research
+        </button>
+<nav class="flex-1 flex flex-col gap-1.5 mt-4">
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-[#0058ba] dark:text-[#6c9fff] font-bold bg-[#6c9fff]/10 dark:bg-[#0058ba]/20 transition-all" href="#">
+<span class="material-symbols-outlined text-[1.25rem]">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-[#232c51]/40 dark:text-[#f7f5ff]/40 hover:bg-[#6c9fff]/10 dark:hover:bg-[#0058ba]/20 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-[1.25rem]">insights</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-[#232c51]/40 dark:text-[#f7f5ff]/40 hover:bg-[#6c9fff]/10 dark:hover:bg-[#0058ba]/20 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-[1.25rem]">group</span>
+                Team
+            </a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-[#232c51]/40 dark:text-[#f7f5ff]/40 hover:bg-[#6c9fff]/10 dark:hover:bg-[#0058ba]/20 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-[1.25rem]">description</span>
+                Documents
+            </a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-[#232c51]/40 dark:text-[#f7f5ff]/40 hover:bg-[#6c9fff]/10 dark:hover:bg-[#0058ba]/20 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-[1.25rem]">archive</span>
+                Archive
+            </a>
+</nav>
+<div class="flex flex-col gap-1 mt-auto border-t ghost-border pt-4">
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-[#232c51]/60 hover:text-primary transition-all text-sm" href="#">
+<span class="material-symbols-outlined text-[1.1rem]">contact_support</span>
+                Support
+            </a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-[#232c51]/60 hover:text-primary transition-all text-sm" href="#">
+<span class="material-symbols-outlined text-[1.1rem]">help_outline</span>
+                Help
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-72 min-h-screen flex flex-col relative pb-20 md:pb-0">
+<!-- TopNavBar (Shared Component for Mobile fallback / Top Utility) -->
+<header class="w-full sticky top-0 z-50 bg-[#f7f5ff]/80 dark:bg-[#232c51]/80 backdrop-blur-2xl shadow-[0_32px_64px_-15px_rgba(35,44,81,0.06)] md:hidden">
+<div class="flex justify-between items-center w-full px-6 h-16">
+<h1 class="text-xl font-bold text-[#232c51] dark:text-[#f7f5ff] font-headline tracking-tight">Compass</h1>
+<div class="flex items-center gap-4 text-[#0058ba]">
+<button><span class="material-symbols-outlined">search</span></button>
+<button><span class="material-symbols-outlined">menu</span></button>
+</div>
+</div>
+</header>
+<!-- Search Canvas Hero -->
+<section class="w-full pt-20 md:pt-32 pb-16 px-6 md:px-12 flex flex-col items-center justify-center relative z-10">
+<h2 class="font-headline text-4xl md:text-[3.5rem] font-bold text-on-surface tracking-tight mb-8 text-center leading-tight">What are we building today?</h2>
+<div class="w-full max-w-3xl relative">
+<div class="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-primary text-2xl">search</span>
+</div>
+<input class="w-full bg-surface-container-lowest glass-panel rounded-xl py-5 pl-16 pr-32 text-lg text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 ghost-border ambient-shadow transition-all font-body" placeholder="Search research, teams, or integrations..." type="text"/>
+<div class="absolute inset-y-0 right-3 flex items-center">
+<button class="bg-surface-container-low text-primary px-4 py-2 rounded-md text-sm font-semibold hover:bg-surface-container transition-colors">
+                        Cmd K
+                    </button>
+</div>
+</div>
+<div class="flex gap-3 mt-6 overflow-x-auto max-w-full pb-2 scrollbar-hide">
+<button class="px-4 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant text-sm font-medium hover:bg-surface-container transition-colors whitespace-nowrap">Q3 Strategy</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant text-sm font-medium hover:bg-surface-container transition-colors whitespace-nowrap">Acquisition Targets</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant text-sm font-medium hover:bg-surface-container transition-colors whitespace-nowrap">AI Market Map</button>
+</div>
+</section>
+<!-- Bento Grid Dashboard -->
+<section class="flex-1 px-6 md:px-12 pb-24 w-full max-w-[1440px] mx-auto z-10">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 auto-rows-[minmax(180px,auto)]">
+<!-- Main Feature: Research Studio -->
+<div class="col-span-1 md:col-span-8 md:row-span-2 bg-surface-container-lowest rounded-xl p-8 ambient-shadow relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+<div class="flex justify-between items-start mb-8 relative z-10">
+<div>
+<h3 class="font-headline text-2xl font-bold text-on-surface tracking-tight">Research Studio</h3>
+<p class="text-on-surface-variant text-sm mt-1">Active deep dives and market analysis</p>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-primary hover:bg-primary hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
+<div class="bg-surface p-5 rounded-lg ghost-border hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-md bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">robot_2</span>
+</div>
+<span class="text-xs font-label uppercase tracking-wider text-on-surface-variant">Q4 Thesis</span>
+</div>
+<h4 class="font-headline font-semibold text-lg text-on-surface mb-2">Generative AI Infrastructure</h4>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-4">
+<div class="bg-primary h-1.5 rounded-full w-[75%]"></div>
+</div>
+</div>
+<div class="bg-surface p-5 rounded-lg ghost-border hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-md bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">health_and_safety</span>
+</div>
+<span class="text-xs font-label uppercase tracking-wider text-on-surface-variant">Due Diligence</span>
+</div>
+<h4 class="font-headline font-semibold text-lg text-on-surface mb-2">NextGen HealthTech V4</h4>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-4">
+<div class="bg-primary h-1.5 rounded-full w-[40%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Feature: Integrations -->
+<div class="col-span-1 md:col-span-4 bg-surface-container-lowest rounded-xl p-8 ambient-shadow flex flex-col">
+<h3 class="font-headline text-lg font-bold text-on-surface tracking-tight mb-6">Integrations</h3>
+<div class="flex flex-col gap-4 flex-1">
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface ghost-border">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-[#E1F0FF] flex items-center justify-center text-[#0066FF]">
+<span class="material-symbols-outlined">folder_data</span>
+</div>
+<div>
+<p class="font-semibold text-sm text-on-surface">Data Warehouse</p>
+<p class="text-xs text-primary font-medium">Connected</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_vert</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface ghost-border">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-[#F4E6FF] flex items-center justify-center text-[#883c93]">
+<span class="material-symbols-outlined">forum</span>
+</div>
+<div>
+<p class="font-semibold text-sm text-on-surface">Team Comms</p>
+<p class="text-xs text-primary font-medium">Connected</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">more_vert</span>
+</div>
+<div class="flex items-center justify-center p-3 rounded-lg border border-dashed border-outline-variant/40 mt-auto hover:bg-surface-container-low transition-colors cursor-pointer text-sm font-medium text-primary">
+                            + Add Service
+                        </div>
+</div>
+</div>
+<!-- Side Feature: Active Tasks -->
+<div class="col-span-1 md:col-span-4 bg-surface-container-highest rounded-xl p-8 flex flex-col justify-between">
+<div>
+<span class="font-label text-xs uppercase tracking-widest text-on-surface-variant">Platform Velocity</span>
+<h3 class="font-headline text-[2.5rem] font-extrabold text-on-surface mt-2 leading-none">14<span class="text-lg text-primary ml-1 font-medium">Active Tasks</span></h3>
+</div>
+<div class="mt-8">
+<div class="flex items-center justify-between text-sm mb-2">
+<span class="text-on-surface font-medium">Sprint Completion</span>
+<span class="text-primary font-bold">82%</span>
+</div>
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full w-[82%]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>
