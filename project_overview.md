@@ -295,11 +295,11 @@ Backend:  http://localhost:8000
 | 9 Artifacts route | T30–T31 | ✅ done |
 | 10 Chat route | T32–T33 | ✅ done |
 | 11 FE API + state | T34–T37 | ✅ done |
-| 12 FE components | T38–T50 | ✅ done (incl. App.tsx 2-column layout) |
-| 25 Smoke (backend boot) | T25 | ✅ backend serves /healthz + /runs; full E2E blocked on .env keys |
-| 13 E2E smoke | T51–T53 | ⏳ needs keys in .env |
-| 14 Polish | T54–T56 | ⏳ next |
-| 15 Stretch (CrewAI) | T57 | — |
+| 12 FE components | T38–T50 | ✅ done (3-column: sidebar / input / dashboard+chat) |
+| 13 E2E smoke | T25, T51–T53 | ✅ verified E2E: prompt → Parallel research → synth → PDF download; /contexts, /runs listing, SQLite persistence across restarts, Docker build all green |
+| 14 Polish | T54–T56 | ✅ loading/error states in RunDashboard, .env path robust (host + container), README present |
+| 15 Stretch (CrewAI) | T57 | ⏭ skipped — plain `asyncio.gather` is good enough for MVP |
+| Post-MVP | — | ✅ context files, SQLite, sidebar, preview modal, Pro-only coming-soon, Docker compose |
 
 ### Post-MVP additions (beyond tasks.md)
 
