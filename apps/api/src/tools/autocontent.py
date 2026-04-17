@@ -113,6 +113,11 @@ async def _create(
     # shortest preset so demo runs complete in ~3–5 min.
     if ac_type == "audio":
         body["duration"] = "short"
+    # Ask explicitly for the "explainer" video format (Amateur-plan
+    # included, 50 credits) — as opposed to Video Shorts which is a
+    # separate Pro-only endpoint (/video/CreateShortsFromContent).
+    if ac_type == "video":
+        body["format"] = "explainer"
     if our_run_id:
         append_event(
             our_run_id, "autocontent", "tool.call",

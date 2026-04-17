@@ -131,13 +131,15 @@ export const OUTPUT_FORMATS: OutputFormat[] = [
   },
   {
     id: 'video',
-    label: 'Video Overview',
-    description: 'Short explainer video (MP4)',
+    label: 'Explainer Video',
+    description: 'AI-narrated explainer video (MP4) — ~60–90s',
     icon: Video,
     ext: 'mp4',
     preview: 'video',
     group: 'Media',
-    pro: true,
+    // Amateur plan includes explainer videos at 50 credits each.
+    // Video Shorts (vertical 9:16) are a separate Pro-only endpoint we
+    // don't expose today — see project_overview.md for detail.
   },
   {
     id: 'infographic',
