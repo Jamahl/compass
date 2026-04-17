@@ -13,6 +13,9 @@ services:
       ARTIFACTS_BASE: /app/data/artifacts
       # Context/ is bind-mounted in from the host.
       CONTEXT_BASE: /app/Context
+      # User-editable prompt config — live on the persistent volume so it
+      # survives `docker compose up --build`.
+      PROMPTS_PATH: /app/data/prompts.json
     volumes:
       # Persistent SQLite + artifact store. Survives container rebuilds.
       - api_data:/app/data

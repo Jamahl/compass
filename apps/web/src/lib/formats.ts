@@ -14,9 +14,11 @@ import {
   FileText,
   HelpCircle,
   Image as ImageIcon,
+  Film,
   Headphones,
   ListChecks,
   MessageSquare,
+  Mic,
   Presentation,
   Scale,
   Video,
@@ -51,6 +53,9 @@ export type OutputType =
   | 'quiz'
   | 'datatable'
   | 'text'
+  // ElevenLabs
+  | 'elevenlabs_audio'
+  | 'elevenlabs_video'
 
 export type PreviewKind = 'pdf' | 'audio' | 'video' | 'image' | 'markdown'
 
@@ -64,7 +69,7 @@ export interface OutputFormat {
   /** How the UI renders this artifact in the preview modal. */
   preview: PreviewKind
   /** Group label for the OutputSelector grid. */
-  group: 'Reports' | 'Media' | 'Structured'
+  group: 'Reports' | 'Media' | 'Structured' | 'ElevenLabs'
   /**
    * Whether this output is gated behind an AutoContent Pro plan. When true
    * the UI shows "Coming soon" and disables the tile. Flip these once known.
@@ -202,6 +207,25 @@ export const OUTPUT_FORMATS: OutputFormat[] = [
     ext: 'md',
     preview: 'markdown',
     group: 'Structured',
+  },
+  // ---- ElevenLabs ----------------------------------------------------------
+  {
+    id: 'elevenlabs_audio',
+    label: 'Narration (ElevenLabs)',
+    description: 'High-quality TTS narration of the brief (MP3)',
+    icon: Mic,
+    ext: 'mp3',
+    preview: 'audio',
+    group: 'ElevenLabs',
+  },
+  {
+    id: 'elevenlabs_video',
+    label: 'Narrated Video (ElevenLabs)',
+    description: 'ElevenLabs TTS over generated title card (MP4)',
+    icon: Film,
+    ext: 'mp4',
+    preview: 'video',
+    group: 'ElevenLabs',
   },
 ]
 

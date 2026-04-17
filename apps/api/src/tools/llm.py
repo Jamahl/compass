@@ -24,6 +24,7 @@ from openai import AsyncOpenAI
 
 from src.config import OPENAI_API_KEY
 from src.store.events import append_event
+from src.store.prompts import get_prompts
 
 # ---------------------------------------------------------------------------
 # Client singleton (lazy)
@@ -34,7 +35,7 @@ _client: Optional[AsyncOpenAI] = None
 # Cap the JSON-dumped research payload at ~12k chars to keep prompts sane.
 _MAX_PAYLOAD_CHARS = 12_000
 
-_MODEL = "gpt-4o"
+_MODEL = "gpt-5.4-nano"
 
 
 def _get_client() -> AsyncOpenAI:
@@ -56,107 +57,8 @@ def _truncate(text: str, limit: int = _MAX_PAYLOAD_CHARS) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Prompts
+# Prompts live in src/store/prompts.py (user-editable via /api/prompts).
 # ---------------------------------------------------------------------------
-
-_SYNTHESIZE_SYSTEM = """You are a senior research analyst. You will be given a raw research payload \
-(JSON) produced by an external deep-research tool. Distil it into a TIGHT, \
-decision-ready brief in Markdown with EXACTLY these sections and headings:
-
-## Executive Summary
-1-2 sentences. The single most important takeaway.
-
-## Key Findings
-3-5 bullets max. Each bullet ≤ 25 words. Concrete, specific (numbers, names, dates).
-
-## Sources
-Bulleted URLs/citations from the payload. De-duplicate. If none, write "No sources provided."
-
-Rules:
-- Output ONLY the Markdown brief. No preamble, no postscript, no code fences.
-- Do not invent facts or sources not present in the payload.
-- Keep the whole brief under 250 words."""
-
-
-_REPORT_SYSTEMS: dict[str, str] = {
-    "report_1pg": """You are a strategy writer producing a SHORT executive brief in Markdown. \
-Target length: 150-250 words. Use EXACTLY these sections:
-
-# <Concise Title>
-
-## Overview
-2-3 sentences framing the subject.
-
-## Key Findings
-3 bullets. Each bullet one short sentence.
-
-## Recommendation
-2-3 sentences with a clear, actionable recommendation.
-
-Rules:
-- Output Markdown only. No code fences, no preamble.
-- Stay within 250 words. No filler.
-- Use only information present in the provided brief. Do not fabricate.""",
-
-    "report_5pg": """You are a strategy writer producing a CONCISE in-depth report in Markdown. \
-Target length: 600-900 words. Use EXACTLY these sections:
-
-# <Concise Title>
-
-## Executive Summary
-80-120 words with the headline conclusions.
-
-## Context
-2 short paragraphs (120-180 words) on background and why it matters now.
-
-## Findings
-3-5 bullets or short paragraphs (200-300 words total). Concrete and specific.
-
-## Analysis
-1-2 paragraphs (100-150 words) on what the findings mean.
-
-## Risks
-3 bullets covering material risks/unknowns.
-
-## Recommendations
-Numbered list, 3 items. Each 1 sentence.
-
-Rules:
-- Output Markdown only. No code fences, no preamble.
-- Stay within 900 words.
-- Use only information present in the provided brief. Do not fabricate sources \
-or statistics.""",
-
-    "competitor_doc": """You are a competitive intelligence analyst producing a CONCISE \
-competitor landscape document in Markdown. Target: under 500 words total.
-
-Required structure:
-
-# Competitor Landscape: <Concise Title>
-
-## Landscape Overview
-1 short paragraph (60-100 words) framing the market and how players cluster.
-
-## Competitor Comparison
-A Markdown table with EXACTLY these columns in this order:
-
-| Competitor | Positioning | Strengths | Weaknesses | Pricing |
-
-Populate up to 5 rows max. Keep each cell to a short phrase. If a value is \
-unknown, write "Unknown".
-
-## Per-Competitor Notes
-For each competitor in the table:
-
-### <Competitor Name>
-1-2 sentences of differentiation/go-to-market.
-
-Rules:
-- Output Markdown only. No code fences, no preamble.
-- The comparison table is mandatory and must use the exact column headers given.
-- Use only information present in the provided brief. Do not fabricate \
-competitors, pricing, or quotes.""",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -185,7 +87,7 @@ async def synthesize(research_payload: dict, *, run_id: str | None = None) -> st
     response = await client.chat.completions.create(
         model=_MODEL,
         messages=[
-            {"role": "system", "content": _SYNTHESIZE_SYSTEM},
+            {"role": "system", "content": get_prompts().synthesize},
             {"role": "user", "content": payload_json},
         ],
     )
@@ -225,14 +127,15 @@ async def write_report(
     `report_type` must be one of: `report_1pg`, `report_5pg`, `competitor_doc`.
     Returns raw markdown. Raises `ValueError` for unknown report types.
     """
-    if report_type not in _REPORT_SYSTEMS:
+    reports = get_prompts().reports
+    if report_type not in reports:
         raise ValueError(
             f"Unknown report_type {report_type!r}. "
-            f"Expected one of: {sorted(_REPORT_SYSTEMS)}."
+            f"Expected one of: {sorted(reports)}."
         )
 
     client = _get_client()
-    system_prompt = _REPORT_SYSTEMS[report_type]
+    system_prompt = reports[report_type]
 
     if run_id:
         append_event(

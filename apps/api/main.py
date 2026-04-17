@@ -8,9 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.routes import artifacts as artifacts_route
 from src.routes import chat as chat_route
 from src.routes import contexts as contexts_route
+from src.routes import prompts as prompts_route
 from src.routes import runs as runs_route
 
-app = FastAPI(title="BetterLabs Research Studio")
+app = FastAPI(title="BetterLabs Compass")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,3 +32,4 @@ app.include_router(runs_route.router)
 app.include_router(chat_route.router)
 app.include_router(artifacts_route.router)
 app.include_router(contexts_route.router)
+app.include_router(prompts_route.router)

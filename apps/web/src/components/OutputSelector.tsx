@@ -6,7 +6,7 @@ export interface OutputSelectorProps {
   onChange: (next: Set<OutputType>) => void
 }
 
-const GROUP_ORDER: OutputFormat['group'][] = ['Reports', 'Media', 'Structured']
+const GROUP_ORDER: OutputFormat['group'][] = ['Reports', 'Media', 'Structured', 'ElevenLabs']
 
 export function OutputSelector({ selected, onChange }: OutputSelectorProps) {
   const toggle = (id: OutputType) => {

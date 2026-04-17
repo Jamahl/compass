@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Settings } from 'lucide-react'
 import compassLogo from '@/assets/compass.png'
 import { cn } from '@/lib/utils'
 import { listRuns, type RunSummary, type RunStatus } from '@/api/client'
@@ -8,6 +8,8 @@ import { OUTPUT_FORMAT_BY_ID } from '@/lib/formats'
 interface RunSidebarProps {
   currentRunId: string | null
   onSelect: (runId: string | null) => void
+  settingsOpen?: boolean
+  onOpenSettings?: () => void
 }
 
 const STATUS_DOT: Record<RunStatus, string> = {
@@ -51,7 +53,7 @@ function relativeTime(iso: string): string {
   return `${diffYr} yr ago`
 }
 
-export function RunSidebar({ currentRunId, onSelect }: RunSidebarProps) {
+export function RunSidebar({ currentRunId, onSelect, settingsOpen = false, onOpenSettings }: RunSidebarProps) {
   const [runs, setRuns] = useState<RunSummary[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -170,6 +172,25 @@ export function RunSidebar({ currentRunId, onSelect }: RunSidebarProps) {
           })}
         </ul>
       </div>
+
+      {onOpenSettings && (
+        <div className="border-t border-white/20 px-3 py-2">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              settingsOpen
+                ? 'bg-white/30 text-on-surface font-semibold'
+                : 'text-on-surface-variant hover:bg-white/20 hover:text-on-surface',
+            )}
+          >
+            <Settings className="size-3.5 shrink-0" />
+            Prompt settings
+          </button>
+        </div>
+      )}
     </aside>
   )
 }

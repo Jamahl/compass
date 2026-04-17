@@ -18,6 +18,12 @@ build/
 /apps/api/tmp/
 /apps/api/data/
 
+# user-editable prompt overrides (created on first save via Settings page)
+/Config/prompts.json
+/Config/prompts.json.tmp
+/apps/api/Config/prompts.json
+/apps/api/Config/prompts.json.tmp
+
 # editor
 .DS_Store
 .vscode/

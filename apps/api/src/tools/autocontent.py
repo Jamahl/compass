@@ -24,6 +24,7 @@ import httpx
 from src.config import AUTOCONTENT_API_KEY
 from src.store.artifacts_dir import get_artifact_path
 from src.store.events import append_event
+from src.store.prompts import get_prompts
 
 _BASE = "https://api.autocontentapi.com"
 _CREATE_URL = f"{_BASE}/content/Create"
@@ -35,21 +36,9 @@ _OVERALL_TIMEOUT_SECONDS = 1800
 # Cap brief length sent to AutoContent. Shorter input → faster + smaller output.
 _BRIEF_CHAR_CAP = 2000
 
-# Per-output-type concise guidance appended to the AutoContent `text` field.
-# AutoContent treats `text` as the user instruction for the generator.
-_OUTPUT_GUIDANCE: dict[str, str] = {
-    "podcast":      "Keep podcast SHORT: 2-3 minutes, 1-2 speakers, single topic.",
-    "video":        "Keep video SHORT: under 90 seconds, minimal scenes.",
-    "slides":       "Keep deck SHORT: 5 slides max, one idea per slide.",
-    "infographic":  "Single infographic, 3-5 key data points only.",
-    "briefing_doc": "1-2 page briefing only. Tight bullets.",
-    "text":         "Keep response under 200 words.",
-    "faq":          "5 Q&A pairs max. Each answer 1-2 sentences.",
-    "study_guide":  "Short study guide, 5 key concepts max.",
-    "timeline":     "5-7 timeline entries max.",
-    "quiz":         "5 questions max.",
-    "datatable":    "Up to 5 rows, 3-5 columns.",
-}
+# Per-output-type guidance lives in src/store/prompts.py (user-editable via
+# /api/prompts). AutoContent treats `text` as the user instruction, so each
+# string is appended to the job title.
 
 # Case-insensitive tokens that indicate a Pro/subscription gating failure.
 _PRO_ERROR_TOKENS: tuple[str, ...] = (
@@ -113,6 +102,11 @@ async def _create(
     # shortest preset so demo runs complete in ~3–5 min.
     if ac_type == "audio":
         body["duration"] = "short"
+    # Ask explicitly for the "explainer" video format (Amateur-plan
+    # included, 50 credits) — as opposed to Video Shorts which is a
+    # separate Pro-only endpoint (/video/CreateShortsFromContent).
+    if ac_type == "video":
+        body["format"] = "explainer"
     if our_run_id:
         append_event(
             our_run_id, "autocontent", "tool.call",
@@ -163,6 +157,10 @@ async def _poll_until_done(
     polls = 0
     started = time.monotonic()
     last_status: int | None = None
+    # Stale-queue detection: warn once per job if AutoContent leaves us
+    # stuck at status=0 (queued, not picked up) past these thresholds.
+    stale_warned_at_secs: set[int] = set()
+    _STALE_STEPS = (180, 600)  # 3 min (first warning), 10 min (second)
     while True:
         r = await client.get(url, headers=_headers())
         polls += 1
@@ -180,14 +178,33 @@ async def _poll_until_done(
         data = r.json()
         status = data.get("status")
         error_message = data.get("error_message")
+        elapsed = time.monotonic() - started
         if our_run_id and isinstance(status, int) and status != last_status:
             append_event(
                 our_run_id, "autocontent", "tool.status",
                 f"AutoContent status={status} (poll #{polls}, "
-                f"{time.monotonic() - started:.1f}s)",
+                f"{elapsed:.1f}s)",
                 data={"status": status, "polls": polls, "request_id": request_id},
             )
             last_status = status
+        # Fire a warn once we cross each stale threshold while still at status=0.
+        if our_run_id and isinstance(status, int) and status == 0:
+            for step in _STALE_STEPS:
+                if elapsed >= step and step not in stale_warned_at_secs:
+                    stale_warned_at_secs.add(step)
+                    mins = step // 60
+                    append_event(
+                        our_run_id, "autocontent", "tool.stale_queue",
+                        f"AutoContent job still queued after {mins} min — "
+                        "their queue is slow; typical wait 5–15 min once picked up.",
+                        level="warn",
+                        data={
+                            "request_id": request_id,
+                            "elapsed_s": int(elapsed),
+                            "threshold_s": step,
+                        },
+                    )
+                    break  # don't fire more than one warning per loop iteration
         if isinstance(status, int):
             if status == 100:
                 # Even at "complete" status, some responses carry an error.
@@ -241,7 +258,7 @@ async def _run(
 
     # Trim brief and append per-type brevity guidance. Smaller payload = faster.
     short_brief = brief if len(brief) <= _BRIEF_CHAR_CAP else brief[:_BRIEF_CHAR_CAP] + "\n\n…"
-    guidance = _OUTPUT_GUIDANCE.get(output_type, "Keep output concise.")
+    guidance = get_prompts().media_guidance.get(output_type, "Keep output concise.")
     title = (
         f"Research Output — {output_type.replace('_', ' ').title()}. "
         f"{guidance}"
