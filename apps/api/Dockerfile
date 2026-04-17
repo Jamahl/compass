@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # OS deps kept minimal — fpdf2 is pure Python; no pango/cairo needed.
 # curl only used by HEALTHCHECK below.

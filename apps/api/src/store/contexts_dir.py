@@ -12,18 +12,31 @@ This module exposes two helpers:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
 def get_contexts_base() -> Path:
-    """Return the absolute path to `<repo>/Context/`.
+    """Return the absolute path to the Context/ directory.
 
-    The directory is NOT created if missing — callers must handle absence.
-    Computed relative to this file's location.
+    Resolution order:
+      1. ``CONTEXT_BASE`` env var (used by Docker: set to ``/app/Context``).
+      2. Repo-root layout: walk ``__file__`` parents looking for a ``Context``
+         sibling directory. This handles both host dev (``apps/api/src/store``
+         depth) and any relative layout change without hard-coding an index.
+      3. Fallback to ``./Context`` relative to CWD.
     """
-    # __file__ = <repo>/apps/api/src/store/contexts_dir.py
-    # parents[0] = store, [1] = src, [2] = api, [3] = apps, [4] = <repo>
-    return Path(__file__).resolve().parents[4] / "Context"
+    env = os.getenv("CONTEXT_BASE")
+    if env:
+        return Path(env)
+
+    # Walk upward looking for a sibling Context directory.
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "Context"
+        if candidate.is_dir():
+            return candidate
+
+    return Path.cwd() / "Context"
 
 
 def load_context_files(filenames: list[str]) -> list[tuple[str, str]]:

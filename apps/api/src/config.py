@@ -12,9 +12,27 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Root .env lives at: <repo>/.env  (this file is at <repo>/apps/api/src/config.py)
-ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
-load_dotenv(ROOT_ENV)
+
+def _find_dotenv() -> Path | None:
+    """Find a repo-root .env relative to this file.
+
+    Works in two layouts:
+      * host dev: apps/api/src/config.py → parents[3] is <repo>.
+      * docker:   /app/src/config.py     → there's no parents[3]. In that case
+        docker-compose's env_file already injected the keys into the process
+        environment, so we return None and rely on os.getenv.
+    """
+    here = Path(__file__).resolve()
+    for p in here.parents:
+        candidate = p / ".env"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+ROOT_ENV = _find_dotenv()
+if ROOT_ENV is not None:
+    load_dotenv(ROOT_ENV)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PARALLEL_API_KEY = os.getenv("PARALLEL_API_KEY")

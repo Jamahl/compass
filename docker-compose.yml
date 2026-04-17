@@ -11,6 +11,8 @@ services:
     environment:
       # Keep SQLite and artifacts on the same named volume for easy backups.
       ARTIFACTS_BASE: /app/data/artifacts
+      # Context/ is bind-mounted in from the host.
+      CONTEXT_BASE: /app/Context
     volumes:
       # Persistent SQLite + artifact store. Survives container rebuilds.
       - api_data:/app/data
