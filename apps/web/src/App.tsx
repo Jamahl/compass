@@ -1,6 +1,8 @@
 import { SearchBar } from '@/components/SearchBar'
 
 function App() {
+  console.log('[v0] App component rendering')
+  
   const handleSearch = (query: string) => {
     console.log('Search query:', query)
   }
