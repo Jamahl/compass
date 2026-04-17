@@ -71,10 +71,12 @@ export default function ArtifactModal({
     <Dialog open onOpenChange={(open) => (!open ? onClose() : undefined)}>
       <DialogContent
         className={cn(
-          'max-w-4xl w-[95vw] p-0 overflow-hidden gap-0',
-          fmt.preview === 'pdf' || fmt.preview === 'video'
-            ? 'h-[85vh]'
-            : 'max-h-[85vh]',
+          // Force a 50vw × 50vh viewport — overrides the Dialog primitive's
+          // default max-w-sm cap. min- prevents the dialog collapsing on
+          // very narrow viewports where 50vw < 360px.
+          // flex flex-col so the body's flex-1 fills the remaining height.
+          'p-0 overflow-hidden gap-0 flex flex-col',
+          'w-[50vw] h-[50vh] max-w-[50vw] sm:max-w-[50vw] min-w-[360px] min-h-[360px]',
         )}
       >
         <DialogHeader className="px-5 py-3 border-b flex flex-row items-center justify-between space-y-0">
@@ -94,9 +96,12 @@ export default function ArtifactModal({
 
         <div
           className={cn(
-            'bg-muted/30',
+            // Fill remaining modal height (DialogContent uses grid with
+            // header auto-rowed, so flex-1 + min-h-0 lets the body scroll
+            // inside the 50vh frame instead of overflowing it).
+            'flex-1 min-h-0 bg-muted/30',
             fmt.preview === 'pdf' || fmt.preview === 'video'
-              ? 'flex-1 min-h-0'
+              ? ''
               : 'overflow-auto',
           )}
         >
@@ -134,13 +139,13 @@ export default function ArtifactModal({
               <img
                 src={src}
                 alt={fmt.label}
-                className="max-w-full max-h-[75vh] object-contain rounded"
+                className="max-w-full max-h-full object-contain rounded"
               />
             </div>
           )}
 
           {fmt.preview === 'markdown' && (
-            <div className="p-6 max-h-[75vh] overflow-auto">
+            <div className="p-6 h-full overflow-auto">
               {mdContent === null && !mdError && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
