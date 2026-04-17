@@ -163,6 +163,10 @@ async def _poll_until_done(
     polls = 0
     started = time.monotonic()
     last_status: int | None = None
+    # Stale-queue detection: warn once per job if AutoContent leaves us
+    # stuck at status=0 (queued, not picked up) past these thresholds.
+    stale_warned_at_secs: set[int] = set()
+    _STALE_STEPS = (180, 600)  # 3 min (first warning), 10 min (second)
     while True:
         r = await client.get(url, headers=_headers())
         polls += 1
@@ -180,14 +184,33 @@ async def _poll_until_done(
         data = r.json()
         status = data.get("status")
         error_message = data.get("error_message")
+        elapsed = time.monotonic() - started
         if our_run_id and isinstance(status, int) and status != last_status:
             append_event(
                 our_run_id, "autocontent", "tool.status",
                 f"AutoContent status={status} (poll #{polls}, "
-                f"{time.monotonic() - started:.1f}s)",
+                f"{elapsed:.1f}s)",
                 data={"status": status, "polls": polls, "request_id": request_id},
             )
             last_status = status
+        # Fire a warn once we cross each stale threshold while still at status=0.
+        if our_run_id and isinstance(status, int) and status == 0:
+            for step in _STALE_STEPS:
+                if elapsed >= step and step not in stale_warned_at_secs:
+                    stale_warned_at_secs.add(step)
+                    mins = step // 60
+                    append_event(
+                        our_run_id, "autocontent", "tool.stale_queue",
+                        f"AutoContent job still queued after {mins} min — "
+                        "their queue is slow; typical wait 5–15 min once picked up.",
+                        level="warn",
+                        data={
+                            "request_id": request_id,
+                            "elapsed_s": int(elapsed),
+                            "threshold_s": step,
+                        },
+                    )
+                    break  # don't fire more than one warning per loop iteration
         if isinstance(status, int):
             if status == 100:
                 # Even at "complete" status, some responses carry an error.
