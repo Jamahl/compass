@@ -1,0 +1,13 @@
+{
+  "name": "betterlabs-research-studio",
+  "private": true,
+  "workspaces": ["apps/web"],
+  "scripts": {
+    "dev": "concurrently \"npm --workspace web run dev\" \"cd apps/api && .venv/bin/uvicorn main:app --reload --port 8000\"",
+    "dev:web": "npm --workspace web run dev",
+    "dev:api": "cd apps/api && .venv/bin/uvicorn main:app --reload --port 8000"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

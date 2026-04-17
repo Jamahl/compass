@@ -1,0 +1,23 @@
+# deps
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# env
+.env
+.env.local
+
+# builds
+dist/
+build/
+*.egg-info/
+
+# artifacts
+/tmp/
+/apps/api/tmp/
+
+# editor
+.DS_Store
+.vscode/
+.idea/
