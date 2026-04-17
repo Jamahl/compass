@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { listRuns, type RunSummary, type RunStatus } from '@/api/client'
 import { OUTPUT_FORMAT_BY_ID } from '@/lib/formats'
@@ -82,29 +81,32 @@ export function RunSidebar({ currentRunId, onSelect }: RunSidebarProps) {
   }, [])
 
   return (
-    <aside className="flex h-screen w-[260px] shrink-0 flex-col border-r bg-background">
-      <div className="flex flex-col gap-3 border-b px-4 py-4">
-        <div className="text-sm font-semibold">Research Studio</div>
-        <Button
+    <aside className="flex h-screen w-[260px] shrink-0 flex-col bg-surface-container-low">
+      <div className="px-4 py-5 space-y-3">
+        <div className="text-base font-extrabold tracking-tight text-on-surface">Research Studio</div>
+        <button
           type="button"
-          size="sm"
           onClick={() => onSelect(null)}
-          className="w-full"
+          className="w-full bg-gradient-brand text-white rounded-full px-4 py-2 text-sm font-bold shadow-glow-primary hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5"
         >
           <Plus className="size-3.5" />
           New Research
-        </Button>
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="flex-1 overflow-y-auto px-3 py-3">
         {error && (
-          <div className="px-2 py-3 text-xs text-red-600">{error}</div>
+          <div className="px-3 py-3 text-xs text-destructive">{error}</div>
         )}
 
         {!error && runs.length === 0 && (
-          <div className="px-2 py-6 text-xs text-muted-foreground">
+          <div className="px-3 py-6 text-xs text-on-surface-variant text-center leading-relaxed">
             No runs yet. Start a new research on the right.
           </div>
+        )}
+
+        {!error && runs.length > 0 && (
+          <div className="px-1 mb-2 text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Recent</div>
         )}
 
         <ul className="flex flex-col gap-1">
@@ -121,11 +123,9 @@ export function RunSidebar({ currentRunId, onSelect }: RunSidebarProps) {
                   type="button"
                   onClick={() => onSelect(run.run_id)}
                   className={cn(
-                    'flex w-full flex-col gap-1.5 rounded-lg border px-2.5 py-2 text-left transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     isActive
-                      ? 'border-primary bg-accent'
-                      : 'border-transparent hover:bg-accent/60',
+                      ? 'flex w-full flex-col gap-1 rounded-xl px-3 py-2.5 text-left transition-colors bg-surface-container-highest border border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                      : 'flex w-full flex-col gap-1 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-surface-container border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -137,15 +137,15 @@ export function RunSidebar({ currentRunId, onSelect }: RunSidebarProps) {
                       style={{ width: '6px', height: '6px' }}
                       aria-label={run.status}
                     />
-                    <span className="truncate text-sm font-medium leading-tight">
+                    <span className="truncate text-sm font-medium leading-tight text-on-surface">
                       {promptLine}
                     </span>
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-[11px] text-on-surface-variant font-label">
                     {relativeTime(run.created_at)}
                   </div>
                   {run.outputs.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
                       {run.outputs.map((outId) => {
                         const fmt = OUTPUT_FORMAT_BY_ID[outId]
                         if (!fmt) return null

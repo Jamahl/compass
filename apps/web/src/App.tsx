@@ -55,7 +55,7 @@ function App() {
         onSelect={handleSelectRun}
       />
 
-      <main className="flex min-h-screen flex-1 gap-6 p-6">
+      <main className="flex min-h-screen flex-1 gap-8 px-6 py-6">
         {/* MIDDLE column */}
         <div className="flex-1 space-y-6">
           {!currentRunId ? (
@@ -71,7 +71,7 @@ function App() {
               />
             </>
           ) : (
-            <Card>
+            <Card className="bg-surface-container-lowest">
               <CardHeader>
                 <CardTitle>Current Run</CardTitle>
               </CardHeader>
@@ -101,11 +101,11 @@ function App() {
               <ChatPanel runId={currentRunId} researchReady={researchReady} />
             </>
           ) : (
-            <Card>
+            <Card className="bg-surface-container-lowest rounded-xl border-0 shadow-sm">
               <CardHeader>
-                <CardTitle>How it works</CardTitle>
+                <CardTitle className="text-sm font-extrabold uppercase tracking-widest text-primary mb-3">How it works</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-muted-foreground space-y-2">
+              <CardContent className="text-sm text-on-surface-variant leading-relaxed space-y-2">
                 <p>1. Pick one or more output formats on the left.</p>
                 <p>
                   2. Enter a research prompt, optional URLs, a template, and

@@ -8,8 +8,6 @@ import {
   Eye,
   Loader2,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { ArtifactMeta } from '@/api/client'
 import { downloadArtifact } from '@/api/client'
@@ -23,10 +21,10 @@ interface ArtifactCardProps {
 type ArtifactStatus = ArtifactMeta['status']
 
 const STATUS_BADGE: Record<ArtifactStatus, string> = {
-  pending: 'bg-gray-100 text-gray-700',
-  running: 'bg-blue-100 text-blue-700',
+  pending: 'bg-surface-container-high text-on-surface-variant',
+  running: 'bg-primary/10 text-primary',
   done: 'bg-green-100 text-green-700',
-  error: 'bg-red-100 text-red-700',
+  error: 'bg-red-100 text-red-600',
 }
 
 function StatusBadge({ status }: { status: ArtifactStatus }) {
@@ -57,37 +55,43 @@ export function ArtifactCard({ artifact }: ArtifactCardProps) {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
+      <div className="bg-surface-container-lowest rounded-xl border border-transparent hover:border-primary/10 hover:shadow-md transition-all">
+        {/* header row */}
+        <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            {Icon ? <Icon className="h-4 w-4 text-muted-foreground" /> : null}
-            <CardTitle className="text-sm font-medium">{label}</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center">
+              {Icon ? <Icon className="h-4 w-4 text-primary" /> : null}
+            </div>
+            <span className="text-sm font-semibold text-on-surface">{label}</span>
           </div>
           <StatusBadge status={artifact.status} />
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 pb-4">
+        </div>
+        {/* body */}
+        <div className="flex flex-col gap-3 px-4 pb-4">
           {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className="text-xs text-on-surface-variant">{description}</p>
           )}
 
           {artifact.status === 'done' && (
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => setOpen(true)}>
-                <Eye className="h-3.5 w-3.5 mr-1" /> {verb}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => downloadArtifact(artifact.id)}
+              <button
+                onClick={() => setOpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-brand text-white text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
               >
-                <Download className="h-3.5 w-3.5 mr-1" /> Download
-              </Button>
+                <Eye className="h-3 w-3" /> {verb}
+              </button>
+              <button
+                onClick={() => downloadArtifact(artifact.id)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
+              >
+                <Download className="h-3 w-3" /> Download
+              </button>
             </div>
           )}
 
           {(artifact.status === 'pending' || artifact.status === 'running') && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
+            <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
               <span>Generating…</span>
             </div>
           )}
@@ -112,8 +116,8 @@ export function ArtifactCard({ artifact }: ArtifactCardProps) {
                 </div>
               )
             })()}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {open && (
         <ArtifactModal artifact={artifact} onClose={() => setOpen(false)} />

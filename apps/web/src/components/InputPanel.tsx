@@ -1,19 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import {
   DEPTH_LEVELS,
@@ -97,168 +83,150 @@ export function InputPanel({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Research Input</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="research-prompt"
-            className="text-sm font-medium"
-          >
-            Prompt
-          </label>
-          <p className="text-xs text-muted-foreground mt-1 mb-2">
-            What do you want to research? The more specific the better. Example:{' '}
-            <em>
-              'What are the top 5 pricing strategies SaaS startups used in 2025
-              to cross $10M ARR?'
-            </em>
-          </p>
+    <div className="space-y-6">
+      <div className="space-y-2 mb-2">
+        <h1 className="text-4xl font-extrabold tracking-tight text-on-surface leading-[1.1]">
+          What do you want to <span className="text-primary">research</span>?
+        </h1>
+        <p className="text-sm text-on-surface-variant">Powered by parallel deep research + GPT-4o synthesis.</p>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="group relative flex items-start gap-3 bg-surface-container-high rounded-2xl px-5 py-4 shadow-sm ring-1 ring-transparent transition-all duration-300 focus-within:bg-surface-container-lowest focus-within:shadow-xl focus-within:shadow-primary/5 focus-within:ring-primary/20">
           <Textarea
             id="research-prompt"
             rows={4}
             required
-            placeholder="What do you want to research?"
+            placeholder="Describe your research objective…"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={disabled}
+            className="bg-transparent border-none focus:ring-0 w-full text-base font-medium placeholder:text-on-surface-variant/50 text-on-surface resize-none min-h-[80px] focus-visible:ring-0 focus-visible:outline-none shadow-none p-0"
           />
         </div>
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <label htmlFor="research-urls" className="text-sm font-medium">
-            URLs (optional)
-          </label>
-          <p className="text-xs text-muted-foreground mt-1 mb-2">
-            Paste one URL per line. The research agent will prioritise these
-            sources when relevant. Useful when you already have a reading list,
-            company pages, or competitor docs. Leave empty to search the open
-            web.
+      <div className="flex flex-col gap-2">
+        <label htmlFor="research-urls" className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+          URLs <span className="font-normal normal-case">(optional, one per line)</span>
+        </label>
+        <Textarea
+          id="research-urls"
+          rows={3}
+          placeholder={'https://example.com\nhttps://another.com'}
+          value={urlsText}
+          onChange={(e) => setUrlsText(e.target.value)}
+          disabled={disabled}
+          className="bg-surface-container-high border-none rounded-xl px-4 py-3 text-sm placeholder:text-on-surface-variant/50 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:bg-surface-container-lowest transition-all"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Context Files</label>
+        {contexts.length === 0 ? (
+          <p className="text-xs text-on-surface-variant italic">
+            No files in Context/. Drop .md files there to enable.
           </p>
-          <Textarea
-            id="research-urls"
-            rows={3}
-            placeholder={'https://example.com\nhttps://another.com'}
-            value={urlsText}
-            onChange={(e) => setUrlsText(e.target.value)}
-            disabled={disabled}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Context files</label>
-          <p className="text-xs text-muted-foreground mt-1 mb-2">
-            Tick any internal documents to feed as background material into the
-            research. The agent will reference them when generating outputs.
-            Drop new .md files into the <code>Context/</code> folder to expand
-            this list.
-          </p>
-          {contexts.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">
-              No files in Context/. Drop .md files there to enable.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {contexts.map((ctx) => {
-                const isSelected = selectedContexts.has(ctx.filename)
-                return (
-                  <button
-                    key={ctx.filename}
-                    type="button"
-                    onClick={() => toggleContext(ctx.filename)}
-                    disabled={disabled}
-                    className={cn(
-                      'rounded-lg border p-2 text-left hover:bg-accent/60',
-                      isSelected
-                        ? 'border-primary bg-accent'
-                        : 'border-border',
-                    )}
-                  >
-                    <div className="text-sm font-medium">{ctx.name}</div>
-                    <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
-                      {ctx.preview}
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Template</label>
-          <Select
-            value={template}
-            onValueChange={(v) => setTemplate(v as Template)}
-            disabled={disabled}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a template" />
-            </SelectTrigger>
-            <SelectContent>
-              {TEMPLATES.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedTemplate ? (
-            <div className="flex items-start gap-2 mt-1">
-              <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
-                {selectedTemplate.scope}
-              </span>
-              <p className="text-xs text-muted-foreground">
-                {selectedTemplate.description}
-              </p>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Depth</label>
-          <Slider
-            min={0}
-            max={3}
-            step={1}
-            value={[safeDepthIdx]}
-            onValueChange={(v) => {
-              // base-ui emits either number or number[] depending on
-              // internal state. Normalise + clamp + round defensively.
-              const raw = Array.isArray(v) ? v[0] : (v as number)
-              if (typeof raw !== 'number' || Number.isNaN(raw)) return
-              const rounded = Math.round(raw)
-              const clamped = Math.max(
-                0,
-                Math.min(DEPTH_LEVELS.length - 1, rounded),
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {contexts.map((ctx) => {
+              const isSelected = selectedContexts.has(ctx.filename)
+              return (
+                <button
+                  key={ctx.filename}
+                  type="button"
+                  onClick={() => toggleContext(ctx.filename)}
+                  disabled={disabled}
+                  className={cn(
+                    isSelected
+                      ? 'rounded-xl border border-primary/40 bg-accent/40 p-3 text-left shadow-sm'
+                      : 'rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-3 text-left hover:border-primary/20 hover:shadow-md transition-all',
+                  )}
+                >
+                  <div className="text-sm font-semibold text-on-surface">{ctx.name}</div>
+                  <p className="text-[11px] text-on-surface-variant line-clamp-2 mt-0.5">
+                    {ctx.preview}
+                  </p>
+                </button>
               )
-              setDepthIdx(clamped)
-            }}
-            disabled={disabled}
-          />
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">
-              {currentDepth.label}
-            </span>
-            <span>{currentDepth.approxTime}</span>
+            })}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Higher depth = more web browsing, more sources, longer runtime.
-          </p>
-        </div>
+        )}
+      </div>
 
-        <Button
-          type="button"
-          onClick={handleSubmit}
-          disabled={submitDisabled}
-          className="w-full"
-        >
-          Run Research
-        </Button>
-      </CardContent>
-    </Card>
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Template</label>
+        <div className="flex flex-wrap gap-2">
+          {TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTemplate(t.id as Template)}
+              disabled={disabled}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-semibold transition-all',
+                template === t.id
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {selectedTemplate ? (
+          <div className="flex items-start gap-2 mt-1">
+            <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant shrink-0">
+              {selectedTemplate.scope}
+            </span>
+            <p className="text-xs text-on-surface-variant">
+              {selectedTemplate.description}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Depth</label>
+        <Slider
+          min={0}
+          max={3}
+          step={1}
+          value={[safeDepthIdx]}
+          onValueChange={(v) => {
+            // base-ui emits either number or number[] depending on
+            // internal state. Normalise + clamp + round defensively.
+            const raw = Array.isArray(v) ? v[0] : (v as number)
+            if (typeof raw !== 'number' || Number.isNaN(raw)) return
+            const rounded = Math.round(raw)
+            const clamped = Math.max(
+              0,
+              Math.min(DEPTH_LEVELS.length - 1, rounded),
+            )
+            setDepthIdx(clamped)
+          }}
+          disabled={disabled}
+        />
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-semibold text-on-surface">{currentDepth.label}</span>
+          <span className="text-on-surface-variant">{currentDepth.approxTime}</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={submitDisabled}
+        className={cn(
+          'w-full py-3 rounded-full font-bold text-sm transition-all',
+          submitDisabled
+            ? 'bg-surface-container-high text-on-surface-variant cursor-not-allowed opacity-60'
+            : 'bg-gradient-brand text-white shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.99]'
+        )}
+      >
+        Run Research →
+      </button>
+    </div>
   )
 }
 

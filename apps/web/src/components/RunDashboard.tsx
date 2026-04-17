@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { CheckCircle2, Loader2, AlertCircle, Circle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { pollRun } from '@/api/polling'
 import type { Stage } from '@/api/client'
@@ -15,10 +14,10 @@ interface RunDashboardProps {
 type StageStatus = Stage['status']
 
 const STATUS_BADGE: Record<StageStatus, string> = {
-  pending: 'bg-gray-100 text-gray-700',
-  running: 'bg-blue-100 text-blue-700',
+  pending: 'bg-surface-container-high text-on-surface-variant',
+  running: 'bg-primary/10 text-primary',
   done: 'bg-green-100 text-green-700',
-  error: 'bg-red-100 text-red-700',
+  error: 'bg-red-100 text-red-600',
 }
 
 function stageDisplayName(name: string): string {
@@ -61,12 +60,10 @@ export function RunDashboard({ runId }: RunDashboardProps) {
 
   if (!runState) {
     return (
-      <Card>
-        <CardContent className="flex items-center gap-2 py-6">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading run…</span>
-        </CardContent>
-      </Card>
+      <div className="flex items-center gap-2 py-8 px-4 bg-surface-container-lowest rounded-xl">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        <span className="text-sm text-on-surface-variant">Loading run…</span>
+      </div>
     )
   }
 
@@ -76,52 +73,42 @@ export function RunDashboard({ runId }: RunDashboardProps) {
   return (
     <div className="flex flex-col gap-3">
       {isFailed && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="py-4">
-            <div className="flex items-start gap-2 text-red-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <div>
-                <div className="font-medium">Run failed</div>
-                <div className="text-sm opacity-90">
-                  The run encountered a fatal error and did not complete.
-                </div>
-              </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+          <div className="flex items-start gap-2 text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <div className="font-semibold text-sm">Run failed</div>
+              <div className="text-xs opacity-80 mt-0.5">The run encountered a fatal error and did not complete.</div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {stageErrors.map((stage) => (
-        <Card
+        <div
           key={`err-${stage.name}`}
-          className="border-red-200 bg-red-50"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-4"
         >
-          <CardContent className="py-4">
-            <div className="flex items-start gap-2 text-red-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <div>
-                <div className="font-medium">
-                  {stageDisplayName(stage.name)} error
-                </div>
-                <div className="text-sm opacity-90">
-                  {stage.error ?? 'Unknown error'}
-                </div>
+          <div className="flex items-start gap-2 text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <div className="font-semibold text-sm">
+                {stageDisplayName(stage.name)} error
+              </div>
+              <div className="text-xs opacity-80 mt-0.5">
+                {stage.error ?? 'Unknown error'}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ))}
 
       <div className="flex flex-col gap-2">
         {runState.stages.map((stage) => (
-          <Card key={stage.name}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
-              <CardTitle className="text-sm font-medium">
-                {stageDisplayName(stage.name)}
-              </CardTitle>
-              <StatusBadge status={stage.status} />
-            </CardHeader>
-          </Card>
+          <div key={stage.name} className="flex items-center justify-between bg-surface-container-lowest rounded-xl px-4 py-3 border border-transparent">
+            <span className="text-sm font-semibold text-on-surface">{stageDisplayName(stage.name)}</span>
+            <StatusBadge status={stage.status} />
+          </div>
         ))}
       </div>
 
@@ -133,10 +120,13 @@ export function RunDashboard({ runId }: RunDashboardProps) {
       />
 
       {runState.artifacts.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {runState.artifacts.map((artifact) => (
-            <ArtifactCard key={artifact.id} artifact={artifact} />
-          ))}
+        <div className="space-y-2">
+          <p className="text-xs font-extrabold uppercase tracking-widest text-primary px-1">Artifacts</p>
+          <div className="flex flex-col gap-2">
+            {runState.artifacts.map((artifact) => (
+              <ArtifactCard key={artifact.id} artifact={artifact} />
+            ))}
+          </div>
         </div>
       )}
     </div>

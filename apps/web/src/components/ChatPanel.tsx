@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Loader2, Send } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { postChat, type ChatMessage } from '@/api/client'
 import { db } from '@/db/dexie'
@@ -104,14 +102,14 @@ export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
   }
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="relative flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden" style={{minHeight: '320px'}}>
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4"
+        className="flex-1 overflow-y-auto p-4 min-h-[240px]"
       >
         <div className="flex flex-col gap-2">
           {messages.length === 0 && researchReady && (
-            <div className="text-center text-xs text-muted-foreground">
+            <div className="text-center text-xs text-on-surface-variant">
               Ask a question about the research.
             </div>
           )}
@@ -125,10 +123,9 @@ export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
             >
               <div
                 className={cn(
-                  'max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm',
                   m.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted',
+                    ? 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm bg-gradient-brand text-white shadow-sm'
+                    : 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm bg-surface-container-high text-on-surface',
                 )}
               >
                 {m.content}
@@ -137,7 +134,7 @@ export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
           ))}
           {sending && (
             <div className="flex w-full justify-start">
-              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-surface-container-high px-4 py-2.5 text-sm text-on-surface-variant">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 <span>Thinking…</span>
               </div>
@@ -146,8 +143,8 @@ export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-t p-3">
-        <Input
+      <div className="flex items-center gap-2 border-t border-outline-variant/30 bg-surface-container-low px-4 py-3">
+        <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -157,24 +154,24 @@ export function ChatPanel({ runId, researchReady }: ChatPanelProps) {
               : 'Waiting for research…'
           }
           disabled={!researchReady || sending}
+          className="flex-1 bg-transparent border-none text-sm placeholder:text-on-surface-variant/60 focus:outline-none text-on-surface"
         />
-        <Button
+        <button
           onClick={() => void handleSend()}
           disabled={!canSend}
-          size="sm"
-        >
-          {sending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
+          className={cn(
+            'flex items-center justify-center w-8 h-8 rounded-full transition-all',
+            canSend ? 'bg-gradient-brand text-white shadow-sm hover:opacity-90' : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed'
           )}
-        </Button>
+        >
+          {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+        </button>
       </div>
 
       {!researchReady && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-          <div className="rounded-md border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
-            Waiting for research to complete…
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/80 backdrop-blur-sm">
+          <div className="rounded-full border border-outline-variant/30 bg-white px-5 py-2 text-sm font-medium text-on-surface-variant shadow-sm">
+            Complete research to unlock chat
           </div>
         </div>
       )}
