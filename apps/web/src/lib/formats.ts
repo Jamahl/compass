@@ -137,6 +137,7 @@ export const OUTPUT_FORMATS: OutputFormat[] = [
     ext: 'mp4',
     preview: 'video',
     group: 'Media',
+    pro: true,
   },
   {
     id: 'infographic',
