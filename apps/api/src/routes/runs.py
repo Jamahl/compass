@@ -26,6 +26,22 @@ async def create_run(req: RunRequest) -> dict[str, str]:
     return {"run_id": run_id}
 
 
+@router.get("/runs")
+def list_runs_route() -> list[dict]:
+    """Return a compact newest-first summary of recent runs for the UI."""
+    rows = runs_store.list_runs(limit=50)
+    return [
+        {
+            "run_id": r.run_id,
+            "created_at": r.created_at or "",
+            "status": r.status,
+            "prompt": r.request.prompt if r.request else "",
+            "outputs": r.request.outputs if r.request else [],
+        }
+        for r in rows
+    ]
+
+
 @router.get("/runs/{run_id}")
 async def get_run(run_id: str) -> RunState:
     """Return the full RunState for polling clients, or 404 if missing."""

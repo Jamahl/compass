@@ -12,9 +12,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
     proxy: {
+      // When running in docker compose: VITE_API_URL=http://api:8000
+      // When running locally via npm run dev: falls back to localhost:8000
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_URL ?? 'http://localhost:8000',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },

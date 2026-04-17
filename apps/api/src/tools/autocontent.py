@@ -30,6 +30,24 @@ _STATUS_URL_TMPL = f"{_BASE}/content/Status/{{request_id}}"
 _POLL_INTERVAL_SECONDS = 5
 _OVERALL_TIMEOUT_SECONDS = 900
 
+# Case-insensitive tokens that indicate a Pro/subscription gating failure.
+_PRO_ERROR_TOKENS: tuple[str, ...] = (
+    "pro",
+    "subscription",
+    "upgrade",
+    "not available on",
+    "plan",
+)
+
+
+class AutoContentProRequiredError(RuntimeError):
+    """Raised when AutoContent rejects a job because it requires a Pro plan."""
+
+
+def _is_pro_error(message: str) -> bool:
+    lowered = message.lower()
+    return any(token in lowered for token in _PRO_ERROR_TOKENS)
+
 # Map our OutputType -> AutoContent outputType + file ext + completion-url field.
 # For text outputs (empty url_field) we save response_text / document_content
 # as a markdown file.
@@ -89,13 +107,26 @@ async def _poll_until_done(
             )
         data = r.json()
         status = data.get("status")
+        error_message = data.get("error_message")
         if isinstance(status, int):
             if status == 100:
+                # Even at "complete" status, some responses carry an error.
+                if error_message and _is_pro_error(str(error_message)):
+                    raise AutoContentProRequiredError(
+                        "This output requires an AutoContent Pro plan — "
+                        "coming soon!"
+                    )
                 return data
             if status < 0:
+                err_str = str(error_message or data)
+                if _is_pro_error(err_str):
+                    raise AutoContentProRequiredError(
+                        "This output requires an AutoContent Pro plan — "
+                        "coming soon!"
+                    )
                 raise RuntimeError(
                     f"AutoContent failed status={status}: "
-                    f"{data.get('error_message') or data}"
+                    f"{error_message or data}"
                 )
         await asyncio.sleep(_POLL_INTERVAL_SECONDS)
 

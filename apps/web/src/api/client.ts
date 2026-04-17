@@ -38,6 +38,35 @@ export interface RunRequest {
   template: Template
   depth: Depth
   outputs: OutputType[]
+  /** Filenames under /Context to inject as research background. */
+  context_files?: string[]
+}
+
+export interface ContextFile {
+  name: string
+  filename: string
+  size: number
+  preview: string
+}
+
+export async function getContexts(): Promise<ContextFile[]> {
+  const res = await fetch('/api/contexts')
+  await ensureOk(res)
+  return (await res.json()) as ContextFile[]
+}
+
+export interface RunSummary {
+  run_id: string
+  created_at: string // ISO
+  status: RunStatus
+  prompt: string
+  outputs: OutputType[]
+}
+
+export async function listRuns(): Promise<RunSummary[]> {
+  const res = await fetch('/api/runs')
+  await ensureOk(res)
+  return (await res.json()) as RunSummary[]
 }
 
 export interface ChatMessage {

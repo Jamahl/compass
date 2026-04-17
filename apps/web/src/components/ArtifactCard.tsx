@@ -3,6 +3,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Circle,
+  Clock,
   Download,
   Eye,
   Loader2,
@@ -91,11 +92,26 @@ export function ArtifactCard({ artifact }: ArtifactCardProps) {
             </div>
           )}
 
-          {artifact.status === 'error' && (
-            <div className="text-xs text-red-600">
-              {artifact.error ?? 'Generation failed.'}
-            </div>
-          )}
+          {artifact.status === 'error' &&
+            (() => {
+              const errorText = artifact.error ?? 'Generation failed.'
+              const isComingSoon =
+                errorText.includes('Coming soon') ||
+                errorText.includes('AutoContent Pro')
+              return (
+                <div
+                  className={cn(
+                    'flex items-center gap-1 text-xs',
+                    isComingSoon ? 'text-amber-700' : 'text-red-600',
+                  )}
+                >
+                  {isComingSoon && (
+                    <Clock className="h-3 w-3 shrink-0" />
+                  )}
+                  <span>{errorText}</span>
+                </div>
+              )
+            })()}
         </CardContent>
       </Card>
 

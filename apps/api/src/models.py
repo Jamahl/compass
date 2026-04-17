@@ -54,6 +54,10 @@ class RunRequest(BaseModel):
     template: Template
     depth: Depth
     outputs: list[OutputType] = Field(..., min_length=1)
+    # Filenames (without path) from /Context directory whose contents should be
+    # injected as background material into the research prompt. Empty list
+    # means no extra context. See src/routes/contexts.py for discovery.
+    context_files: list[str] = Field(default_factory=list)
 
 
 class Stage(BaseModel):
@@ -76,6 +80,7 @@ class RunState(BaseModel):
     stages: list[Stage] = Field(default_factory=list)
     artifacts: list[ArtifactMeta] = Field(default_factory=list)
     research_payload: str | None = None
+    created_at: str | None = None  # ISO 8601 UTC; set by the store on create
     request: RunRequest | None = None  # keep original for debug / writer access
 
 

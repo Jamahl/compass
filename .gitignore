@@ -13,9 +13,10 @@ dist/
 build/
 *.egg-info/
 
-# artifacts
+# artifacts + persistent data
 /tmp/
 /apps/api/tmp/
+/apps/api/data/
 
 # editor
 .DS_Store

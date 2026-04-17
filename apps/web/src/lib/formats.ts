@@ -65,6 +65,11 @@ export interface OutputFormat {
   preview: PreviewKind
   /** Group label for the OutputSelector grid. */
   group: 'Reports' | 'Media' | 'Structured'
+  /**
+   * Whether this output is gated behind an AutoContent Pro plan. When true
+   * the UI shows "Coming soon" and disables the tile. Flip these once known.
+   */
+  pro?: boolean
 }
 
 export const OUTPUT_FORMATS: OutputFormat[] = [
@@ -208,15 +213,55 @@ export const OUTPUT_FORMAT_BY_ID: Record<OutputType, OutputFormat> =
 export interface TemplateMeta {
   id: Template
   label: string
+  /** One-line helper shown under the select. */
+  description: string
+  /** How comprehensive the research is for this template. */
+  scope: 'Narrow' | 'Balanced' | 'Broad' | 'Exhaustive'
 }
 
 export const TEMPLATES: TemplateMeta[] = [
-  { id: 'market_sizing', label: 'Market Sizing' },
-  { id: 'competitor_scan', label: 'Competitor Scan' },
-  { id: 'customer_pain', label: 'Customer Pain' },
-  { id: 'company_deep_dive', label: 'Company Deep-Dive' },
-  { id: 'product_teardown', label: 'Product Teardown' },
-  { id: 'custom', label: 'Custom (prompt only)' },
+  {
+    id: 'market_sizing',
+    label: 'Market Sizing',
+    description:
+      'TAM / SAM / SOM estimates with sources. Focused on numbers, growth rates, and segments.',
+    scope: 'Balanced',
+  },
+  {
+    id: 'competitor_scan',
+    label: 'Competitor Scan',
+    description:
+      'Lists direct + indirect competitors, positioning, pricing, and moats. Broad landscape sweep.',
+    scope: 'Broad',
+  },
+  {
+    id: 'customer_pain',
+    label: 'Customer Pain',
+    description:
+      'Synthesises pain points, jobs-to-be-done, quotes, and workarounds from user-facing sources.',
+    scope: 'Balanced',
+  },
+  {
+    id: 'company_deep_dive',
+    label: 'Company Deep-Dive',
+    description:
+      'History, team, funding, product, strategy, metrics. Most comprehensive single-entity research.',
+    scope: 'Exhaustive',
+  },
+  {
+    id: 'product_teardown',
+    label: 'Product Teardown',
+    description:
+      'Features, UX, tech choices, strengths/weaknesses of one product. Narrow but deep.',
+    scope: 'Narrow',
+  },
+  {
+    id: 'custom',
+    label: 'Custom (prompt only)',
+    description:
+      'No template guidance — the research agent follows only your prompt. Use when your ask is specific.',
+    scope: 'Narrow',
+  },
 ]
 
 export interface DepthMeta {

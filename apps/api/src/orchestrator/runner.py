@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from ..models import ArtifactMeta, RunRequest
 from ..store import runs as runs_store
+from ..store.contexts_dir import load_context_files
 from ..tools import llm, parallel
 from . import writer
 
@@ -27,9 +28,29 @@ async def start(run_id: str, request: RunRequest) -> None:
     try:
         # ---- 1. Research -----------------------------------------------------
         runs_store.update_stage(run_id, "research", "running")
+
+        # If the user selected context files, load them and prepend to the
+        # prompt as an "Internal Context" block. Leaves urls/template/depth
+        # untouched — context only affects the prompt text.
+        research_prompt = request.prompt
+        if request.context_files:
+            loaded = load_context_files(request.context_files)
+            if loaded:
+                blocks = "\n\n".join(
+                    f"## {name}\n{content}" for name, content in loaded
+                )
+                research_prompt = (
+                    "INTERNAL CONTEXT — reference these documents when "
+                    "generating findings:\n\n"
+                    f"{blocks}\n\n"
+                    "---\n\n"
+                    "RESEARCH REQUEST:\n"
+                    f"{request.prompt}"
+                )
+
         try:
             payload = await parallel.run_research(
-                request.prompt,
+                research_prompt,
                 request.urls,
                 request.template,
                 request.depth,

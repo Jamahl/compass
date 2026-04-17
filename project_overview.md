@@ -16,15 +16,17 @@ Single-user localhost web app. User submits research prompt → backend runs Par
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Frontend | Vite + React + TS | shadcn/ui + Tailwind |
+| Frontend | Vite + React + TS | shadcn/ui + Tailwind v4 + react-markdown |
 | State (client) | zustand (UI) + Dexie/IndexedDB (chat persistence) | No react-query — plain `fetch` + `useState` |
-| Backend | FastAPI (Python 3.11+) | Single worker, in-memory state |
+| Backend | FastAPI (Python 3.11+) | **SQLite store** (persists runs), plain `sqlite3` stdlib |
 | Python env | `python -m venv .venv` + `pip install -e .` | Not uv |
 | Pkg mgr (web) | `npm` + workspaces | Not pnpm |
 | Orchestration | `asyncio.gather` fan-out | CrewAI = stretch only |
-| Transport | REST + **polling** (2s interval) | No SSE for MVP (PRD fallback) |
-| PDF | `weasyprint` (markdown → HTML → PDF) | — |
+| Transport | REST + **polling** (2s interval) | No SSE for MVP |
+| PDF | `fpdf2` (markdown → HTML → PDF) | Pure Python, no pango/cairo |
+| Persistence | SQLite (`apps/api/data/runs.db`) + file artifacts (`apps/api/data/artifacts/` or `ARTIFACTS_BASE` env) | Survives restarts |
 | External | OpenAI (`gpt-4o`), Parallel Task API, AutoContent API | All 3 keys live |
+| Runtime | Localhost **or** Docker Compose | `docker compose up` runs api + web + named volume |
 
 ---
 
@@ -145,8 +147,10 @@ Base: `http://localhost:8000` (Vite dev proxies `/api/*` → `:8000`).
 |---|---|---|---|
 | GET | `/healthz` | liveness | `{"ok": true}` |
 | POST | `/runs` | create + start run | `{"run_id": str}` |
+| GET | `/runs` | list recent runs (newest first, summary) | `RunSummary[]` |
 | GET | `/runs/{run_id}` | poll run state | `RunState` |
 | POST | `/runs/{run_id}/chat` | chat vs research | `ChatResponse` |
+| GET | `/contexts` | list .md files in `Context/` with name + preview | `ContextFile[]` |
 | GET | `/artifacts/{artifact_id}` | preview / stream artifact | `FileResponse` (inline by default) |
 | GET | `/artifacts/{artifact_id}?download=1` | force attachment download | `FileResponse` (attachment) |
 
@@ -229,6 +233,8 @@ Loaded by `apps/api/src/config.py` via `python-dotenv`. Config resolves `.env` a
 
 ## 10. Running locally
 
+### Option A — host-native
+
 ```bash
 # one-time
 npm install                              # root (installs concurrently + web workspace)
@@ -243,6 +249,18 @@ cp .env.example .env                     # then paste keys
 npm run dev                              # boots web :5173 + api :8000
 ```
 
+### Option B — Docker Compose
+
+```bash
+cp .env.example .env   # paste keys
+docker compose up --build
+```
+
+- API: http://localhost:8000
+- Web: http://localhost:5173
+- Named volume `api_data` holds SQLite + artifacts (persists across rebuilds).
+- `./Context` mounted read-only into the api container so host edits surface instantly.
+
 Frontend: http://localhost:5173
 Backend:  http://localhost:8000
 
@@ -253,10 +271,12 @@ Backend:  http://localhost:8000
 - **No SSE** — polling 2s is enough, simpler, no reconnect logic.
 - **No react-query** — single-screen app, 1 polling loop.
 - **No CrewAI for MVP** — plain `asyncio.gather`. Stretch task T57 wraps later if time.
-- **In-memory run store** — no DB. Demo restarts wipe state; acceptable.
-- **Single IndexedDB table** — only chat messages persisted client-side.
-- **Artifacts on disk** in `/tmp/betterlabs-artifacts/` — no cleanup.
+- **SQLite run store** — persists across restarts. Single table `runs` (see `apps/api/src/store/runs.py`).
+- **Single IndexedDB table (messages)** — chat persistence, per-browser.
+- **Artifacts** live under `apps/api/data/artifacts/{run_id}/{artifact_id}.{ext}`. Override via `ARTIFACTS_BASE` env var (Docker sets this to `/app/data/artifacts`).
 - **Pkg mgr: npm** (not pnpm). **Py env: venv+pip** (not uv).
+- **Context folder** — any `.md` at `<repo>/Context/*.md` shows as a tickable tile in InputPanel; selected files are prepended to the research prompt as "INTERNAL CONTEXT". README.md is skipped.
+- **Pro-only outputs** — runtime detection: backend catches AutoContent error messages containing "pro/subscription/upgrade/plan" tokens and raises `AutoContentProRequiredError` → artifact shows "Coming soon — requires AutoContent Pro plan" in amber. Static gating: `OutputFormat.pro = true` disables the tile in OutputSelector and shows a "Coming soon" pill.
 
 ---
 
@@ -280,6 +300,15 @@ Backend:  http://localhost:8000
 | 13 E2E smoke | T51–T53 | ⏳ needs keys in .env |
 | 14 Polish | T54–T56 | ⏳ next |
 | 15 Stretch (CrewAI) | T57 | — |
+
+### Post-MVP additions (beyond tasks.md)
+
+- **InputPanel helper text** — helper paragraphs under Prompt, URLs, Template (with scope pill), Depth. Example query provided for Prompt.
+- **Context files** — `/Context/*.md` folder, `GET /contexts` route, tickable tiles in InputPanel, content prepended to research prompt as "INTERNAL CONTEXT". Path-traversal protected. Ships with sample `willow.md` and `townsquare.md`.
+- **Session persistence** — SQLite `runs.db` under `apps/api/data/`. New `GET /runs` list route. **Sidebar** (`RunSidebar.tsx`) shows all past runs with status dot, relative time, output icons; click to switch run; "+ New Research" button.
+- **3-column layout** — sidebar | input or current-run summary | dashboard+chat.
+- **Pro-only outputs** — graceful error detection (`AutoContentProRequiredError`) + amber "Coming soon — requires AutoContent Pro plan" in card; static `pro: true` flag on OutputFormat disables tile with "Coming soon" pill.
+- **Docker Compose** — `Dockerfile` per service, `docker-compose.yml` with `api_data` volume + read-only Context mount. Web container proxies via `VITE_API_URL=http://api:8000`.
 
 ### Known deviations from tasks.md
 

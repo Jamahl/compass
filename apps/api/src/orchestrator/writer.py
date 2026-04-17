@@ -15,6 +15,7 @@ import asyncio
 from ..models import ArtifactMeta
 from ..store import runs as runs_store
 from ..tools import autocontent, llm, reportgen
+from ..tools.autocontent import AutoContentProRequiredError
 
 _REPORT_TYPES = {"report_1pg", "report_5pg", "competitor_doc"}
 
@@ -65,6 +66,14 @@ async def generate_output(
             type=output_type,  # type: ignore[arg-type]
             status="done",
             filename=path.name,
+        )
+    except AutoContentProRequiredError:
+        return ArtifactMeta(
+            id=artifact_id,
+            type=output_type,  # type: ignore[arg-type]
+            status="error",
+            filename="",
+            error="Coming soon — requires AutoContent Pro plan",
         )
     except Exception as e:  # noqa: BLE001
         return ArtifactMeta(
